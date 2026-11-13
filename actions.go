@@ -50,8 +50,6 @@ func (a *App) run(id string, args map[string]string) {
 		a.openProject()
 	case "palette.open":
 		a.openPalette()
-	case "conversation.resume":
-		a.openConversations()
 	case "session.attention":
 		a.jumpToAttention()
 	case "session.next":
@@ -168,7 +166,6 @@ var actionTitles = map[string]func() string{
 	"session.newWorktree": locales.ActionNewSessionWorktree,
 	"project.open":        locales.ActionOpenProject,
 	"palette.open":        locales.ActionGoToSession,
-	"conversation.resume": locales.ActionResumeConversation,
 	"session.attention":   locales.ActionJumpToAttention,
 	"session.next":        locales.ActionNextSession,
 	"session.previous":    locales.ActionPreviousSession,
@@ -255,7 +252,7 @@ func (a *App) menu() *mygo.Menu {
 		kero,
 		{Label: locales.MenuSession(), Submenu: a.items("Session",
 			[]string{"session.new", "session.newHome", "session.newWorktree", "project.open"},
-			[]string{"palette.open", "conversation.resume", "session.attention", "session.next", "session.previous"},
+			[]string{"palette.open", "session.attention", "session.next", "session.previous"},
 			[]string{"session.rename", "pane.restart"},
 			[]string{"pane.close", "session.close"})},
 		// The Edit menu's own items, then finding.
@@ -323,7 +320,7 @@ var quitKeys = func() string {
 
 // fromMay reports whether an action another machine's program asked for
 // (kero do, a.from) may run: one that acts on a session acts on one of
-// that host's alone, never on this machine's, which a local agent's may;
+// that host's alone, never on this machine's, which a local program's may;
 // one of the app, as Settings or the sidebar, may.
 func (a *App) fromMay(id string, args map[string]string) bool {
 	h := a.from

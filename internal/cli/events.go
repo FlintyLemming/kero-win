@@ -24,14 +24,13 @@ type event struct {
 	Project string `json:"project,omitempty"`
 	// Name is the session's name, as the sidebar shows it.
 	Name string `json:"name,omitempty"`
-	// pane.status: the statuses, and the pane's message, what it waits
-	// for and its agent; session.renamed: the names; session.moved: the
+	// pane.status: the statuses, and the pane's message and what it
+	// waits for; session.renamed: the names; session.moved: the
 	// projects' ids.
 	From    string `json:"from,omitempty"`
 	To      string `json:"to,omitempty"`
 	Message string `json:"message,omitempty"`
 	Kind    string `json:"kind,omitempty"`
-	Agent   string `json:"agent,omitempty"`
 	// ExitCode is the shell's status, as a pane goes to exited, or the
 	// status of the command it started with (command.exited).
 	ExitCode *int `json:"exitCode,omitempty"`
@@ -87,7 +86,7 @@ func diffState(prev, next proto.State, now time.Time) []event {
 			if was.Status != p.Status {
 				e := of("pane.status", s)
 				e.Pane, e.From, e.To = p.ID, string(was.Status), string(p.Status)
-				e.Message, e.Kind, e.Agent = p.Message, p.Kind, p.Agent
+				e.Message, e.Kind = p.Message, p.Kind
 				if p.Since > 0 {
 					e.Time = p.Since
 				}

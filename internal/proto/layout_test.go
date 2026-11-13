@@ -47,11 +47,11 @@ func TestLead(t *testing.T) {
 }
 
 func TestDisplayNameFollowsFocus(t *testing.T) {
-	agent := Pane{ID: "a", Process: "claude", Agent: "claude", Title: "✳ Fix login", Status: Working}
+	prog := Pane{ID: "a", Process: "make", Title: "⠋ Fix login", Status: Working}
 	shell := Pane{ID: "b", Shell: "fish", Dir: "/src/web", Status: Idle}
-	s := Session{Pane: agent, Panes: []Pane{agent, shell}, Lead: "a", Focus: "b"}
+	s := Session{Pane: prog, Panes: []Pane{prog, shell}, Lead: "a", Focus: "b"}
 	if n := s.DisplayName(NameFocused); n != "Fix login" {
-		t.Fatalf("name %q, want the agent's title over an idle shell", n)
+		t.Fatalf("name %q, want the program's title over an idle shell", n)
 	}
 	s.Panes[1].Process, s.Panes[1].Title = "vim", "main.go"
 	if n := s.DisplayName(NameFocused); n != "main.go" {
@@ -66,7 +66,7 @@ func TestDisplayNameFollowsFocus(t *testing.T) {
 	}
 	s.Focus = "a"
 	if n := s.DisplayName(NameFocused); n != "Fix login" {
-		t.Fatalf("name %q, want the agent's title", n)
+		t.Fatalf("name %q, want the program's title", n)
 	}
 }
 

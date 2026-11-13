@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
 	"time"
 
 	"kero/internal/proto"
@@ -24,15 +23,14 @@ type savedState struct {
 }
 
 type savedSession struct {
-	ID         string          `json:"id"`
-	Project    string          `json:"project"`
-	Name       string          `json:"name,omitempty"`
-	AgentNamed bool            `json:"agentNamed,omitempty"`
-	Created    int64           `json:"created"`
-	Layout     *proto.Layout   `json:"layout,omitempty"`
-	Focus      string          `json:"focus,omitempty"`
-	Panes      []savedPane     `json:"panes"`
-	Worktree   *proto.Worktree `json:"worktree,omitempty"`
+	ID       string          `json:"id"`
+	Project  string          `json:"project"`
+	Name     string          `json:"name,omitempty"`
+	Created  int64           `json:"created"`
+	Layout   *proto.Layout   `json:"layout,omitempty"`
+	Focus    string          `json:"focus,omitempty"`
+	Panes    []savedPane     `json:"panes"`
+	Worktree *proto.Worktree `json:"worktree,omitempty"`
 }
 
 type savedPane struct {
@@ -40,15 +38,11 @@ type savedPane struct {
 	Dir     string   `json:"dir,omitempty"`
 	Command []string `json:"command,omitempty"`
 	// URL and Title are a browser pane's page.
-	URL   string `json:"url,omitempty"`
-	Title string `json:"title,omitempty"`
-	// Agent is the agent's session that ran in it, to resume, and Turn
-	// where its last turn started.
-	Agent   *proto.AgentSession `json:"agent,omitempty"`
-	Turn    *proto.Turn         `json:"turn,omitempty"`
-	Created int64               `json:"created"`
-	Cols    int                 `json:"cols"`
-	Rows    int                 `json:"rows"`
+	URL     string `json:"url,omitempty"`
+	Title   string `json:"title,omitempty"`
+	Created int64  `json:"created"`
+	Cols    int    `json:"cols"`
+	Rows    int    `json:"rows"`
 }
 
 func (d *Daemon) statePath() string { return filepath.Join(d.dir, "state.json") }
@@ -64,12 +58,8 @@ func (d *Daemon) saveLoop() {
 		case <-d.saveCh:
 			time.Sleep(300 * time.Millisecond)
 			d.saveState()
-			d.noteConversations()
-			d.saveConversations()
 		case <-snaps.C:
 			d.saveHistories(false)
-			d.noteConversations()
-			d.saveConversations()
 		case <-d.quit:
 			return
 		}
@@ -80,11 +70,11 @@ func (d *Daemon) saveState() {
 	d.mu.Lock()
 	st := savedState{Version: 2, Projects: d.projects, Saved: time.Now().UnixMilli()}
 	for _, s := range d.sessions {
-		ss := savedSession{ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed, Created: s.created, Layout: s.layout, Focus: s.focus, Worktree: s.worktree}
+		ss := savedSession{ID: s.id, Project: s.project, Name: s.name, Created: s.created, Layout: s.layout, Focus: s.focus, Worktree: s.worktree}
 		for _, p := range s.panes {
 			p.mu.Lock()
 			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL,
-				Agent: p.info.AgentSession, Turn: p.info.Turn, Created: p.info.Created, Cols: p.info.Cols, Rows: p.info.Rows}
+				Created: p.info.Created, Cols: p.info.Cols, Rows: p.info.Rows}
 			if p.info.Browser() {
 				sp.Title = p.info.Title
 			}
@@ -145,9 +135,9 @@ func (d *Daemon) restore() {
 	d.projects = st.Projects
 	when := time.UnixMilli(st.Saved).Format("Mon Jan 2 15:04")
 	for _, ss := range st.Sessions {
-		s := &session{id: ss.ID, project: ss.Project, name: ss.Name, agentNamed: ss.AgentNamed, created: ss.Created, restored: true, focus: ss.Focus, worktree: ss.Worktree}
+		s := &session{id: ss.ID, project: ss.Project, name: ss.Name, created: ss.Created, restored: true, focus: ss.Focus, worktree: ss.Worktree}
 		for _, sp := range ss.Panes {
-			if p := d.restorePane(s.id, sp, when, set.ResumeAgents); p != nil {
+			if p := d.restorePane(s.id, sp, when); p != nil {
 				s.panes = append(s.panes, p)
 				d.panes[p.info.ID] = p
 			}
@@ -175,9 +165,9 @@ func (d *Daemon) restore() {
 }
 
 // restorePane starts a pane of the last daemon again, under its
-// scrollback, in its directory, with the agent it ran resumed; a browser
-// pane comes back on its page, which the app loads.
-func (d *Daemon) restorePane(sid string, sp savedPane, when string, resumeAgents bool) *pane {
+// scrollback, in its directory; a browser pane comes back on its page,
+// which the app loads.
+func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 	now := time.Now().UnixMilli()
 	if sp.URL != "" {
 		p, _ := newPane(d, sid, proto.Pane{
@@ -186,71 +176,28 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string, resumeAgents
 		})
 		return p
 	}
-	var command []string
-	var reason string
-	if resumeAgents || sp.Agent == nil {
-		command, reason = resumeCommandWithReason(sp.Agent)
-	} else {
-		sp.Agent = nil
-		reason = "agent resumption disabled"
-	}
 	p, err := newPane(d, sid, proto.Pane{
 		ID: sp.ID, Dir: sp.Dir, Command: sp.Command, Status: proto.Idle, Since: now,
-		Created: sp.Created, Cols: sp.Cols, Rows: sp.Rows, Restored: true, AgentSession: sp.Agent, Turn: sp.Turn,
+		Created: sp.Created, Cols: sp.Cols, Rows: sp.Rows, Restored: true,
 	})
 	if err != nil {
 		d.log.Printf("restoring %s: %v", sp.ID, err)
 		return nil
 	}
 	// What the session showed, down to where its cursor was, with the
-	// new shell under it: what a program drew below the cursor, as an
-	// agent's status bar, goes, rather than show under the new shell's
+	// new shell under it: what a program drew below the cursor, as a
+	// status bar, goes, rather than show under the new shell's
 	// prompt. History carries no modes and no cursor to undo.
 	if h, err := os.ReadFile(d.historyPath(sp.ID)); err == nil && len(h) > 0 {
 		p.term.Feed(h)
 		p.term.Feed([]byte("\x1b[2m── restored · session ended " + when + " ──\x1b[0m\r\n"))
 	}
 	// The shell alone: what ran in it may not want to run again unasked.
-	// But an agent's conversation, which only waits for the user.
-	if err := p.start(command, nil); err != nil {
+	if err := p.start(nil, nil); err != nil {
 		d.log.Printf("restoring %s: %v", sp.ID, err)
 		p.term.Close()
 		return nil
 	}
-	if reason != "" {
-		d.log.Printf("pane %s restored as shell: %s", sp.ID, reason)
-	}
 	p.dirty = true
 	return p
 }
-
-// resumeCommand is the command that resumes an agent's session, nil for
-// none.
-func resumeCommand(a *proto.AgentSession) []string {
-	command, _ := resumeCommandWithReason(a)
-	return command
-}
-
-// resumeCommandWithReason also explains a shell fallback without including
-// the agent's name or conversation ID in the diagnostic.
-func resumeCommandWithReason(a *proto.AgentSession) ([]string, string) {
-	if a == nil {
-		return nil, "no agent session recorded"
-	}
-	if !agentSessionRe.MatchString(a.ID) {
-		return nil, "invalid agent session ID"
-	}
-	switch a.Agent {
-	case "claude":
-		return []string{"claude", "--resume", a.ID}, ""
-	case "codex":
-		return []string{"codex", "resume", a.ID}, ""
-	case "pi", "opencode":
-		return []string{a.Agent, "--session", a.ID}, ""
-	case "omp":
-		return []string{"omp", "--session", a.ID}, ""
-	}
-	return nil, "unsupported agent"
-}
-
-var agentSessionRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)

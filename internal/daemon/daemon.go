@@ -30,7 +30,6 @@ import (
 	"kero/internal/build"
 	"kero/internal/clilink"
 	"kero/internal/detach"
-	"kero/internal/detect"
 	"kero/internal/proto"
 	"kero/internal/settings"
 	"kero/internal/shell"
@@ -75,7 +74,6 @@ type Daemon struct {
 	// panes answer programs' questions about the colors with.
 	theme    atomic.Pointer[terminal.Theme]
 	git      *gitFollow
-	convs    convStore
 	net      *listeners
 	changeCh chan struct{}
 	saveCh   chan struct{}
@@ -115,11 +113,6 @@ func Run(opts Options) error {
 		logw = io.MultiWriter(logf, os.Stderr)
 	}
 	lg := log.New(logw, "", log.LstdFlags|log.Lmicroseconds)
-	// The user's agents, which a restart reads anew.
-	detect.UserFile = settings.AgentsPath()
-	for _, p := range detect.Problems() {
-		lg.Printf("agents: %s", p)
-	}
 	// What an update of the server build on Windows moved aside, which
 	// it could not remove as it ran (update.Replace).
 	if build.Server && runtime.GOOS == "windows" {
@@ -185,7 +178,6 @@ func Run(opts Options) error {
 	// The listeners first: Tailscale Serve's socket takes a umask of its
 	// own, which no program kerod starts may get.
 	d.net = d.listen()
-	d.loadConversations()
 	d.restore()
 
 	signal.Ignore(syscall.SIGPIPE)
@@ -202,7 +194,6 @@ func Run(opts Options) error {
 		lg.Printf("%v: saving and exiting", s)
 		d.saveHistories(true)
 		d.saveState()
-		d.saveConversations()
 		d.stop()
 	}()
 
@@ -276,7 +267,7 @@ func localPeer(c net.Conn) string {
 func (d *Daemon) stop() { d.quitOnce.Do(func() { close(d.quit) }) }
 
 // linkCLI keeps bin/kero pointing at this executable (package clilink),
-// which sessions have on their PATH: the kero CLI, for agents to drive
+// which sessions have on their PATH: the kero CLI, for scripts to drive
 // other sessions.
 // executable is this program's path, links resolved: started through the
 // CLI's link (bin/kero), as a bridge over SSH is, os.Executable on macOS
@@ -511,10 +502,10 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	for _, kv := range os.Environ() {
 		k, _, _ := strings.Cut(kv, "=")
 		switch {
-		case k == "CLAUDECODE", k == "TERM_PROGRAM", k == "TERM_PROGRAM_VERSION", k == "TERM_SESSION_ID",
+		case k == "TERM_PROGRAM", k == "TERM_PROGRAM_VERSION", k == "TERM_SESSION_ID",
 			k == "ITERM_SESSION_ID", k == "WINDOWID", k == "KITTY_WINDOW_ID", k == "LC_TERMINAL", k == "LC_TERMINAL_VERSION",
 			k == "KERO_SESSION", k == "KERO_PANE", k == "KERO_HOST", k == "KERO_ZDOTDIR", k == takeoverEnv, k == "KERO_SERVICE", k == "INVOCATION_ID", k == "MYGO_GHOSTTY_VT", k == "TMUX", k == "TMUX_PANE",
-			strings.HasPrefix(k, "CLAUDE_CODE_"), strings.HasPrefix(k, "GHOSTTY_"),
+			strings.HasPrefix(k, "GHOSTTY_"),
 			strings.HasPrefix(k, "VSCODE_"), strings.HasPrefix(k, "__CF"), k == "XPC_SERVICE_NAME":
 			continue
 		}
@@ -533,8 +524,8 @@ func (d *Daemon) environment(sid, pid, shell string, extra []string) []string {
 	}
 	set("TERM=xterm-256color")
 	set("COLORTERM=truecolor")
-	// kero's emulator is Ghostty's: programs that know Ghostty, as coding
-	// agents for their notifications and keyboard, take it for one.
+	// kero's emulator is Ghostty's: programs that know Ghostty, for their
+	// notifications and keyboard, take it for one.
 	// LC_TERMINAL names kero, as iTerm2 names itself there.
 	set("TERM_PROGRAM=ghostty")
 	set("TERM_PROGRAM_VERSION=" + ghosttyVersion)
@@ -593,51 +584,6 @@ func expandHome(p string) string {
 		return filepath.Join(proto.Home(), p[2:])
 	}
 	return p
-}
-
-// agents are the coding agents the sidebar recognizes, by the name of
-// their executable or script, besides those of the user's manifests
-// (detect.UserFile).
-var agents = []string{
-	"claude", "codex", "gemini", "opencode", "amp", "aider", "cursor-agent", "droid",
-	"qwen", "goose", "crush", "copilot", "kiro-cli", "cline", "auggie", "kimi", "pi", "omp",
-}
-
-func detectAgent(name string, args []string) string {
-	cands := []string{name}
-	for i, a := range args {
-		if i > 2 {
-			break
-		}
-		cands = append(cands, filepath.Base(a))
-	}
-	for _, c := range cands {
-		c = strings.ToLower(strings.TrimSuffix(c, filepath.Ext(c)))
-		// The user's, which may name a program as one of kero's.
-		if a := detect.Executable(c); a != "" {
-			return a
-		}
-		for _, a := range agents {
-			if c == a || strings.HasPrefix(c, a+"-") && a != "pi" {
-				return a
-			}
-		}
-	}
-	// Scripts installed by npm: …/node_modules/@openai/codex/bin/codex.js,
-	// or …\@anthropic-ai\claude-code\cli.js, which npm's shims run on
-	// Windows, where nothing names the script after the command.
-	for i, a := range args {
-		if i > 2 {
-			break
-		}
-		a = strings.ReplaceAll(a, `\`, "/")
-		for _, ag := range agents {
-			if len(ag) > 3 && (strings.Contains(a, "/"+ag+"/") || strings.Contains(a, "/"+ag+"-code/")) {
-				return ag
-			}
-		}
-	}
-	return ""
 }
 
 // controlConn is a client's control connection.

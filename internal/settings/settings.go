@@ -31,8 +31,6 @@ type Settings struct {
 	FocusFollowsMouse bool   `json:"focusFollowsMouse"` // a pane the pointer enters takes the focus
 	ConfirmClose      bool   `json:"confirmClose"`      // before closing a pane a program runs in
 	RestoreSessions   bool   `json:"restoreSessions"`   // after kerod restarts, as after a reboot
-	ResumeAgents      bool   `json:"resumeAgents"`      // as it restores sessions: the agents' own
-	SessionHistory    bool   `json:"sessionHistory"`    // the sidebar lists the agents' ended conversations
 	QuitConfirm       bool   `json:"quitConfirm"`       // tell, the first time, that quitting keeps sessions
 	AppIcon           string `json:"appIcon"`           // macOS: AppIcons; elsewhere the icon is always in the notification area
 	KeepAwake         string `json:"keepAwake"`         // one of KeepAwakeModes: while the computer is kept from sleeping
@@ -78,13 +76,13 @@ type Settings struct {
 
 	// Notifications
 	NotifyWaiting bool `json:"notifyWaiting"` // a session needs you
-	NotifyDone    bool `json:"notifyDone"`    // an agent finished
+	NotifyDone    bool `json:"notifyDone"`    // a program reported it finished
 	NotifyFailed  bool `json:"notifyFailed"`  // a program reported it failed
 	NotifySound   bool `json:"notifySound"`
 	DockBadge     bool `json:"dockBadge"`
 	BounceDock    bool `json:"bounceDock"`
 
-	// Agents
+	// Command line
 	RemoteControl bool `json:"remoteControl"` // kero focus and kero do drive the app
 
 	// Git
@@ -155,7 +153,6 @@ func Default() Settings {
 		SidebarCount:    true,
 		ConfirmClose:    true,
 		RestoreSessions: true,
-		ResumeAgents:    true,
 		QuitConfirm:     true,
 		AppIcon:         "dock-and-menubar",
 		KeepAwake:       "off",
@@ -214,8 +211,8 @@ var AppIcons = []string{"dock-and-menubar", "dock", "menubar"}
 var PaddingColors = []string{"background", "extend", "extend-always"}
 
 // KeepAwakeModes are when Kero keeps the computer from sleeping: never,
-// as long as it runs, or while an agent on this machine works.
-var KeepAwakeModes = []string{"off", "on", "agents"}
+// as long as it runs, or while a program on this machine works.
+var KeepAwakeModes = []string{"off", "on", "working"}
 
 // KeroThemes are kero's themes: the wash each shows under the window's
 // cards, and its name in the configuration.

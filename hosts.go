@@ -45,13 +45,6 @@ type host struct {
 	dialing   bool   // a connection attempt is under way
 	kerod     string // which kerod it is (kerodID), once connected
 	loaded    bool   // a state came
-	// convs are the conversations the host's kerod remembers, for the
-	// sidebar, as of its count of their changes convGen; convAsked tells
-	// that they're asked for.
-	convs     []proto.Conversation
-	convGen   uint64
-	convKnown bool
-	convAsked bool
 	viewSent  *string
 	// busy is what the app does on the host for the user: install, update
 	// or restart.
@@ -537,7 +530,7 @@ func (a *App) own(h *host, s proto.Session) {
 }
 
 // remoteControl reports whether a host's programs may drive the app (kero
-// focus, kero do): this machine's as Settings › Agents says, another's as
+// focus, kero do): this machine's as Settings › Command Line says, another's as
 // Settings › Hosts does.
 func (a *App) remoteControl(h *host) bool {
 	if !h.remote() {

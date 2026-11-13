@@ -973,9 +973,9 @@ func TestSidebarSplitPanes(t *testing.T) {
 	a.terms["a"], a.terms["b"] = &termEntry{}, &termEntry{}
 	s := &a.st.Sessions[0]
 	s.Name = "auth refactor"
-	s.Panes[0] = proto.Pane{ID: "a", Shell: "zsh", Process: "claude", Agent: "claude", Title: "Refactor the auth flow", Dir: "/Users/someone/dev/demo", Status: proto.Working, Progress: -1,
+	s.Panes[0] = proto.Pane{ID: "a", Shell: "zsh", Process: "nvim", Title: "Refactor the auth flow", Dir: "/Users/someone/dev/demo", Status: proto.Working, Progress: -1,
 		Git: &proto.GitInfo{Root: "/Users/someone/dev/demo", Branch: "auth-refactor", Default: "main"}}
-	s.Panes[1] = proto.Pane{ID: "b", Shell: "zsh", Process: "codex", Agent: "codex", Title: "Review the tests", Dir: "/Users/someone/dev/demo", Status: proto.Waiting, Unread: true, Progress: -1, Message: "Allow running npm test?"}
+	s.Panes[1] = proto.Pane{ID: "b", Shell: "zsh", Process: "npm", Title: "Review the tests", Dir: "/Users/someone/dev/demo", Status: proto.Waiting, Unread: true, Progress: -1, Message: "Allow running npm test?"}
 	s.Panes = append(s.Panes, proto.Pane{ID: "c", Shell: "zsh", Process: "bun", Runtime: "bun", Dir: "/Users/someone/dev/demo/web", Status: proto.Idle, Progress: -1})
 	var l *proto.Layout
 	s.Layout = l.Split("a", "b", "right", 0).Split("b", "c", "down", 0)
@@ -988,7 +988,7 @@ func TestSidebarSplitPanes(t *testing.T) {
 		a.st.Sessions = append(a.st.Sessions, n)
 	}
 	add("s2", "docs", proto.Pane{ID: "d", Shell: "zsh", Dir: "/Users/someone/dev/demo", Status: proto.Idle, Progress: -1})
-	add("s3", "gemini", proto.Pane{ID: "e", Shell: "zsh", Process: "gemini", Agent: "gemini", Dir: "/Users/someone/dev/demo", Status: proto.Working, Progress: -1})
+	add("s3", "build", proto.Pane{ID: "e", Shell: "zsh", Process: "make", Dir: "/Users/someone/dev/demo", Status: proto.Working, Progress: -1})
 	tt := ui.NewTester(a.view, 1100, 640)
 	tt.Frame()
 	// The pane's header shows its name too: the sidebar adds one.

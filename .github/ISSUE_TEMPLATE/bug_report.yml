@@ -19,7 +19,7 @@ body:
       label: Steps to reproduce
       description: The smallest set of steps that shows it. Include the command if it's the CLI, or the program running in the pane (Claude Code, Codex, vim…) if it's a terminal problem.
       placeholder: |
-        1. kero new -n test -- claude
+        1. kero new -n test -- npm run dev
         2. Split the pane with ⌘D
         3. …
     validations:

@@ -24,7 +24,6 @@ import (
 
 	"kero/internal/actions"
 	"kero/internal/adblock"
-	"kero/internal/cli"
 	"kero/internal/client"
 	"kero/internal/proto"
 	"kero/internal/settings"
@@ -49,7 +48,7 @@ var settingsPages = []settingsPage{
 	{"browser", locales.PageBrowser, globeIcon, false},
 	{"notifications", locales.PageNotifications, glyph("f7-bell"), false},
 	{"keyboard", locales.PageKeyboard, glyph("f7-keyboard"), false},
-	{"agents", locales.PageAgents, glyph("f7-sparkles"), false},
+	{"cli", locales.PageCli, returnIcon, false},
 	{"hosts", locales.PageHosts, hostIcon, true},
 	{"advanced", locales.PageAdvanced, glyph("f7-slider-horizontal-3"), false},
 }
@@ -122,7 +121,7 @@ func (a *App) openSettings(page string) {
 		}
 	})
 	a.ss.draft = map[string]string{}
-	a.refreshAgents()
+	a.refreshCLI()
 	a.refreshService()
 	a.setWin = mygo.NewWindow(framed(mygo.WindowOptions{
 		Title: locales.SettingsTitle(), Width: 820, Height: 620, MinWidth: 700, MinHeight: 480,
@@ -161,7 +160,7 @@ func (a *App) refreshUpdates() {
 	}
 }
 
-func (a *App) refreshAgents() {
+func (a *App) refreshCLI() {
 	a.ss.cliPath = cliInstalled()
 }
 
@@ -291,8 +290,8 @@ func (a *App) settingsView(c *ui.Context) {
 								a.notificationsPage(c, pal)
 							case "keyboard":
 								a.keyboardPage(c, pal)
-							case "agents":
-								a.agentsPage(c, pal)
+							case "cli":
+								a.cliPage(c, pal)
 							case "hosts":
 								a.hostsPage(c, pal)
 							case "advanced":
@@ -552,14 +551,6 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		})
 		settingRow(c, pal, locales.SetRestoreSessions(), locales.SetRestoreSessionsDetail(), func() {
 			toggle(c.Key("restore"), &s.RestoreSessions, pal)
-		})
-		if s.RestoreSessions {
-			settingRow(c, pal, locales.SetResumeAgents(), locales.SetResumeAgentsDetail(), func() {
-				toggle(c.Key("resume"), &s.ResumeAgents, pal)
-			})
-		}
-		settingRow(c, pal, locales.SetSessionHistory(), locales.SetSessionHistoryDetail(), func() {
-			toggle(c.Key("session-history"), &s.SessionHistory, pal)
 		})
 	})
 	settingsGroup(c, pal, locales.SetGit(), locales.SetGitDetail(), func() {
@@ -1219,7 +1210,7 @@ func (a *App) notificationsPage(c *ui.Context, pal *palette) {
 	}
 }
 
-func (a *App) agentsPage(c *ui.Context, pal *palette) {
+func (a *App) cliPage(c *ui.Context, pal *palette) {
 	s := &a.set
 	settingsGroup(c, pal, locales.SetRemoteControl(), "", func() {
 		settingRow(c, pal, locales.SetRemoteControlRow(), locales.SetRemoteControlDetail(), func() {
@@ -1239,34 +1230,9 @@ func (a *App) agentsPage(c *ui.Context, pal *palette) {
 			}
 			if button(c, "cli", label, "", a.ss.cliPath == "", pal) {
 				a.installCLI()
-				time.AfterFunc(1500*time.Millisecond, func() { a.update(a.refreshAgents) })
+				time.AfterFunc(1500*time.Millisecond, func() { a.update(a.refreshCLI) })
 			}
 		})
-	})
-	settingsGroup(c, pal, locales.SetSkills(), locales.SetSkillsDetail(), func() {
-		for _, st := range cli.SkillStates() {
-			name := map[string]string{"claude": "Claude Code", "agents": "Codex, OpenCode, Pi"}[st.Agent]
-			detail := map[string]string{"current": locales.SetSkillInstalled(), "outdated": locales.SetSkillOutdated(), "missing": locales.SetSkillMissing()}[st.State] + " · " + proto.ShortDir(st.Dir)
-			settingRow(c, pal, name, detail, func() {
-				agent := st.Agent
-				if st.State != "missing" && button(c, "rm-"+agent, locales.CommonRemove(), "", false, pal) {
-					if err := cli.RemoveSkill(agent); err != nil {
-						a.toastIn(c, err.Error())
-					}
-				}
-				if st.State != "current" {
-					label := locales.CommonInstall()
-					if st.State == "outdated" {
-						label = locales.CommonUpdate()
-					}
-					if button(c, "in-"+agent, label, "", true, pal) {
-						if err := cli.InstallSkill(agent); err != nil {
-							a.toastIn(c, err.Error())
-						}
-					}
-				}
-			})
-		}
 	})
 	settingsGroup(c, pal, locales.SetProgramStatus(), locales.SetProgramStatusDetail(), nil)
 	codeBlock(c, pal, "kero report working \"Deploying\" --progress 40\nkero report blocked \"Approve the migration?\" --kind permission\nkero report done \"Deployed\"")

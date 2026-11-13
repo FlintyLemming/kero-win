@@ -56,19 +56,19 @@ func TestPaletteKeepAwake(t *testing.T) {
 	}
 	a.openPalette()
 	tt.Frame()
-	tt.Type("while agents")
+	tt.Type("while working")
 	tt.Frame()
-	if !tt.HasText(title(awakeAgents)) {
-		t.Errorf("no %q found; texts %q", title(awakeAgents), tt.Texts())
+	if !tt.HasText(title(awakeWorking)) {
+		t.Errorf("no %q found; texts %q", title(awakeWorking), tt.Texts())
 	}
 	if offers(awakeOff) != nil {
 		t.Error("the palette offers the mode it is in")
 	}
-	offers(awakeAgents).run()
-	if a.set.KeepAwake != awakeAgents {
-		t.Errorf("the mode is %q, want %q", a.set.KeepAwake, awakeAgents)
+	offers(awakeWorking).run()
+	if a.set.KeepAwake != awakeWorking {
+		t.Errorf("the mode is %q, want %q", a.set.KeepAwake, awakeWorking)
 	}
-	if offers(awakeAgents) != nil || offers(awakeOff) == nil {
+	if offers(awakeWorking) != nil || offers(awakeOff) == nil {
 		t.Error("the palette's modes did not follow the choice")
 	}
 }

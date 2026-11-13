@@ -78,7 +78,7 @@ func TestKeroHostScope(t *testing.T) {
 		t.Errorf("-H inside a pane: %q", host)
 	}
 	t.Setenv("KERO_PANE", "")
-	if !localOnly["hook"] || !localOnly["config"] || localOnly["ls"] {
+	if !localOnly["report"] || !localOnly["config"] || localOnly["ls"] {
 		t.Error("localOnly")
 	}
 	onHost = "build"

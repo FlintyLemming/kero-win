@@ -16,7 +16,7 @@ func TestAnyWorking(t *testing.T) {
 		{"none", nil, false},
 		{"idle", []proto.Session{{ID: "a", Status: proto.Idle, Panes: []proto.Pane{{Status: proto.Idle}}}}, false},
 		{"working", []proto.Session{{ID: "a", Status: proto.Working, Panes: []proto.Pane{{Status: proto.Working}}}}, true},
-		// The session shows the waiting pane's status; the agent beside it
+		// The session shows the waiting pane's status; the pane beside it
 		// still works.
 		{"behind a waiting pane", []proto.Session{{ID: "a", Status: proto.Waiting, Panes: []proto.Pane{
 			{ID: "p1", Status: proto.Waiting}, {ID: "p2", Status: proto.Working},

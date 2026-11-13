@@ -48,20 +48,14 @@ func (r Repo) Snapshot(ctx context.Context) (string, error) {
 
 // Bases a diff compares the working tree with.
 const (
-	BaseTurn   = "turn"   // a snapshot: what an agent's turn started from
 	BaseHead   = "head"   // HEAD: what isn't committed
 	BaseBranch = "branch" // where HEAD left the default branch: a PR's diff
 )
 
 // Base returns the tree-ish of a base, and what it is to show: "HEAD", or
-// the default branch's name; turn is the snapshot's tree, for BaseTurn.
-func (r Repo) Base(ctx context.Context, base, turn string) (rev, name string, err error) {
+// the default branch's name.
+func (r Repo) Base(ctx context.Context, base string) (rev, name string, err error) {
 	switch base {
-	case BaseTurn:
-		if turn == "" {
-			return "", "", errors.New("no turn to compare with")
-		}
-		return turn, "", nil
 	case BaseBranch:
 		def := r.DefaultBranch()
 		for _, ref := range []string{"refs/remotes/origin/" + def, "refs/heads/" + def} {
@@ -252,37 +246,8 @@ func Hash(b []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
-// Changed reports whether a file of the working tree is other than in
-// rev, as git keeps it: one that a diff with rev shows.
-func (r Repo) Changed(ctx context.Context, rev, path string) (bool, error) {
-	full, err := r.local(path)
-	if err != nil {
-		return false, err
-	}
-	nb, err := readWorking(full)
-	if err != nil && !os.IsNotExist(err) {
-		return false, err
-	}
-	ob, err := run(ctx, r.Root, nil, "cat-file", "blob", rev+":"+path)
-	if err != nil {
-		return nb != nil, nil // not in rev: changed when it is now
-	}
-	return !bytes.Equal(ob, nb), nil
-}
-
 // ErrChanged: the file isn't as it was when read.
 var ErrChanged = errors.New("the file changed since it was shown")
-
-// Write writes text to a regular file of the working tree, keeping its
-// mode, when its content still hashes to hash: one written meanwhile is
-// left as it is (ErrChanged).
-func (r Repo) Write(path, hash, text string) error {
-	full, err := r.local(path)
-	if err != nil {
-		return err
-	}
-	return WriteFile(full, hash, text)
-}
 
 // WriteFile writes text to a regular file, keeping its mode, when its
 // content still hashes to hash: one written meanwhile is left as it is

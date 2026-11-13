@@ -46,56 +46,19 @@ func TestGitFollow(t *testing.T) {
 		t.Error("the info was replaced with nothing changed")
 	}
 
-	// The agent's turn: a snapshot of the worktree as it starts.
-	p.mu.Lock()
-	p.info.Agent = "claude"
-	p.setStatus(proto.Working)
-	p.mu.Unlock()
-	for deadline := time.Now().Add(10 * time.Second); ; {
-		p.mu.Lock()
-		turn := p.info.Turn
-		p.mu.Unlock()
-		if turn != nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("no turn")
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
 	os.WriteFile(filepath.Join(repo, "a.txt"), []byte("one\ntwo\nthree\n"), 0o644)
-	ch, err := d.gitChanges(proto.GitParams{Pane: "p", Base: git.BaseTurn})
+	ch, err := d.gitChanges(proto.GitParams{Pane: "p", Base: git.BaseHead})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(ch.Files) != 1 || ch.Files[0].Path != "a.txt" || ch.Files[0].Added != 1 {
-		t.Fatalf("turn changes %+v", ch)
+	if len(ch.Files) != 1 || ch.Files[0].Path != "a.txt" || ch.Files[0].Added != 2 {
+		t.Fatalf("changes %+v", ch)
 	}
-	txt, err := d.gitText(proto.GitParams{Pane: "p", Base: git.BaseTurn, Path: "a.txt"})
-	if err != nil || txt.Old != "one\ntwo\n" || txt.New != "one\ntwo\nthree\n" {
+	txt, err := d.gitText(proto.GitParams{Pane: "p", Base: git.BaseHead, Path: "a.txt"})
+	if err != nil || txt.Old != "one\n" || txt.New != "one\ntwo\nthree\n" {
 		t.Fatalf("text %+v, %v", txt, err)
 	}
-	if same, _ := d.gitText(proto.GitParams{Pane: "p", Base: git.BaseTurn, Path: "a.txt", Known: txt.Hash}); !same.Same || same.New != "" {
+	if same, _ := d.gitText(proto.GitParams{Pane: "p", Base: git.BaseHead, Path: "a.txt", Known: txt.Hash}); !same.Same || same.New != "" {
 		t.Errorf("a known text sent again: %+v", same)
-	}
-
-	revert := proto.GitWriteParams{Pane: "p", Base: git.BaseTurn, Path: "a.txt", Hash: txt.Hash, Text: txt.Old}
-	if _, err := d.gitRevert(revert); err == nil {
-		t.Error("reverted under a working agent")
-	}
-	p.mu.Lock()
-	p.setStatus(proto.Idle)
-	p.mu.Unlock()
-	if _, err := d.gitRevert(proto.GitWriteParams{Pane: "p", Base: git.BaseTurn, Path: "../x", Hash: txt.Hash, Text: "x"}); err == nil {
-		t.Error("wrote outside the worktree")
-	}
-	if hash, err := d.gitRevert(revert); err != nil || hash != git.Hash([]byte(txt.Old)) {
-		t.Fatal(hash, err)
-	}
-	if b, _ := os.ReadFile(filepath.Join(repo, "a.txt")); string(b) != "one\ntwo\n" {
-		t.Errorf("reverted to %q", b)
-	}
-	if _, err := d.gitRevert(revert); err == nil {
-		t.Error("reverted a file with no changes, or one changed since shown")
 	}
 }

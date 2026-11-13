@@ -17,24 +17,21 @@ import (
 )
 
 // A session in a worktree of its own shows its branch by its name, and
-// by its pane's title with its changes; Toggle Changes lists what its
-// agent changed in its turn in the right sidebar, and their diffs in the
-// viewer.
+// by its pane's title with its changes; Toggle Changes lists what isn't
+// committed in the right sidebar, and their diffs in the viewer.
 func TestSidePanel(t *testing.T) {
 	a := testApp(t)
 	s := &a.st.Sessions[0]
 	g := &proto.GitInfo{Root: "/tmp/demo", Branch: "fix-login", Default: "main", Head: "0123456789abcdef", Ahead: 2, Files: 3, Added: 40, Removed: 2}
 	s.Panes[0].Git = g
-	s.Panes[0].Agent, s.Panes[0].Process = "claude", "claude"
-	s.Panes[0].Turn = &proto.Turn{Tree: "abc", Root: "/tmp/demo", At: time.Now().UnixMilli()}
 	s.Panes[1].Git = g
 	s.Pane = s.Panes[0]
 	a.toggleSide(sideChanges)
 
 	// What kerod would answer.
 	ch := &a.side.changes
-	turnScope := changesScope(&s.Panes[0], git.BaseTurn)
-	ch.base, ch.scope, ch.stamp = git.BaseTurn, turnScope, gitStamp(g)+"|abc"
+	headScope := changesScope(&s.Panes[0], git.BaseHead)
+	ch.base, ch.scope, ch.stamp = git.BaseHead, headScope, gitStamp(g)
 	ch.res = &proto.GitChanges{Root: "/tmp/demo", Files: []proto.GitFile{
 		{Path: "internal/auth/login.go", Status: "modified", Added: 30, Removed: 2},
 		{Path: "internal/auth/login_test.go", Status: "added", Added: 10},
@@ -45,7 +42,7 @@ func TestSidePanel(t *testing.T) {
 
 	tt := ui.NewTester(a.view, 1280, 720)
 	tt.Frame()
-	for _, want := range []string{"fix-login", "Changes", "Last Turn", "Uncommitted", "Branch", "login.go", "login_test.go", "+30", "−2", "3 files"} {
+	for _, want := range []string{"fix-login", "Changes", "Uncommitted", "Branch", "login.go", "login_test.go", "+30", "−2", "3 files"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q; texts %q", want, tt.Texts())
 		}
@@ -54,7 +51,7 @@ func TestSidePanel(t *testing.T) {
 
 	// Another base: the list stays, faded, while its own comes, and one
 	// fetched before shows at once.
-	ch.base = git.BaseHead
+	ch.base = git.BaseBranch
 	tt.Frame()
 	if !tt.HasText("login.go") {
 		t.Errorf("the list blinked away as the base changed; texts %q", tt.Texts())
@@ -64,8 +61,8 @@ func TestSidePanel(t *testing.T) {
 	if tt.HasText("login.go") {
 		t.Error("another base's list stayed past a moment")
 	}
-	ch.lists[turnScope] = ch.res
-	ch.base = git.BaseTurn
+	ch.lists[headScope] = ch.res
+	ch.base = git.BaseHead
 	tt.Frame()
 	if !tt.HasText("login.go") {
 		t.Errorf("a list fetched before didn't show at once; texts %q", tt.Texts())
@@ -73,7 +70,7 @@ func TestSidePanel(t *testing.T) {
 
 	// Each file is its header, then its diff, in one scroll: none opens
 	// on its own.
-	sf := ch.files[turnScope+"|internal/auth/login.go"]
+	sf := ch.files[headScope+"|internal/auth/login.go"]
 	if sf == nil {
 		t.Fatal("no diff kept for login.go")
 	}
@@ -82,7 +79,7 @@ func TestSidePanel(t *testing.T) {
 		New:  "package auth\n\nimport \"errors\"\n\n// Login signs a user in.\nfunc Login(user, password string) error {\n\tif password == \"\" {\n\t\treturn errors.New(\"no password\")\n\t}\n\treturn nil\n}\n",
 		Hash: "h1",
 	})
-	if test := ch.files[turnScope+"|internal/auth/login_test.go"]; test != nil {
+	if test := ch.files[headScope+"|internal/auth/login_test.go"]; test != nil {
 		a.showText(test, proto.GitText{New: "package auth\n\nfunc TestLogin(t *testing.T) {}\n", Hash: "h2"})
 	}
 	tt.Frame()
@@ -112,7 +109,7 @@ func TestSidePanel(t *testing.T) {
 	a.showText(sf, proto.GitText{Old: "package auth\n", New: long, Hash: "h4"})
 	tt.Frame()
 	tt.Frame()
-	ls := ch.places[turnScope]
+	ls := ch.places[headScope]
 	top, _ := tt.Find("login.go")
 	if pinned(tt, ls, "login.go", top.Y) {
 		t.Error("login.go's header pinned at the top before any scroll")
@@ -139,12 +136,12 @@ func TestSidePanel(t *testing.T) {
 	}
 	tt.ClickAt(hdr.X+hdr.W/2, hdr.Y+hdr.H/2)
 	tt.Frame()
-	if !a.fileCollapsed(turnScope, ch.res.Files[0]) {
+	if !a.fileCollapsed(headScope, ch.res.Files[0]) {
 		t.Error("a click didn't fold login.go")
 	}
 	tt.ClickAt(hdr.X+hdr.W/2, hdr.Y+hdr.H/2)
 	tt.Frame()
-	if a.fileCollapsed(turnScope, ch.res.Files[0]) {
+	if a.fileCollapsed(headScope, ch.res.Files[0]) {
 		t.Error("a second click didn't unfold login.go")
 	}
 	tt.SetDark(true)

@@ -10,12 +10,12 @@ import (
 )
 
 // The modes of Keep computer awake (settings.KeepAwakeModes): off, the
-// system's own sleep; on, kept awake while Kero runs; agents, kept awake
-// while an agent of this machine's works.
+// system's own sleep; on, kept awake while Kero runs; working, kept awake
+// while a pane of this machine's works.
 const (
-	awakeOff    = "off"
-	awakeOn     = "on"
-	awakeAgents = "agents"
+	awakeOff     = "off"
+	awakeOn      = "on"
+	awakeWorking = "working"
 )
 
 // keepAwake holds the computer awake, or lets it sleep, as the mode and
@@ -26,7 +26,7 @@ func (a *App) keepAwake() {
 	switch a.set.KeepAwake {
 	case awakeOn:
 		hold = true
-	case awakeAgents:
+	case awakeWorking:
 		hold = anyWorking(a.st.Sessions, func(id string) bool { return !a.hostOf(id).remote() })
 	}
 	a.awake.hold(hold)
@@ -59,8 +59,8 @@ func awakeModeIn(msgs locales.Messages, mode string) string {
 	switch mode {
 	case awakeOn:
 		return msgs.AwakeOn()
-	case awakeAgents:
-		return msgs.AwakeAgents()
+	case awakeWorking:
+		return msgs.AwakeWorking()
 	}
 	return msgs.AwakeOff()
 }

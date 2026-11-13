@@ -116,16 +116,6 @@ func (msgs Messages) ActionGoToSession() string {
 	return Catalog.Format(msgs.locale, "actionGoToSession", nil)
 }
 
-// ActionResumeConversation says "Resume Conversation…"
-// in the language the app shows.
-func ActionResumeConversation() string { return In(i18n.Locale()).ActionResumeConversation() }
-
-// ActionResumeConversation says "Resume Conversation…"
-// in the language of msgs.
-func (msgs Messages) ActionResumeConversation() string {
-	return Catalog.Format(msgs.locale, "actionResumeConversation", nil)
-}
-
 // ActionJumpToAttention says "Jump to Session Needing You"
 // in the language the app shows.
 func ActionJumpToAttention() string { return In(i18n.Locale()).ActionJumpToAttention() }
@@ -892,18 +882,6 @@ func (msgs Messages) NotifyDoneTitle(name string) string {
 	return Catalog.Format(msgs.locale, "notifyDoneTitle", map[string]any{"name": name})
 }
 
-// NotifyDoneBody says "{agent} finished in {dir}"
-// in the language the app shows.
-func NotifyDoneBody(agent string, dir string) string {
-	return In(i18n.Locale()).NotifyDoneBody(agent, dir)
-}
-
-// NotifyDoneBody says "{agent} finished in {dir}"
-// in the language of msgs.
-func (msgs Messages) NotifyDoneBody(agent string, dir string) string {
-	return Catalog.Format(msgs.locale, "notifyDoneBody", map[string]any{"agent": agent, "dir": dir})
-}
-
 // OpenProjectTitle says "Open Project"
 // in the language the app shows.
 func OpenProjectTitle() string { return In(i18n.Locale()).OpenProjectTitle() }
@@ -1526,16 +1504,6 @@ func (msgs Messages) EmptyDetail() string {
 	return Catalog.Format(msgs.locale, "emptyDetail", nil)
 }
 
-// EmptyForAgents says "For agents"
-// in the language the app shows.
-func EmptyForAgents() string { return In(i18n.Locale()).EmptyForAgents() }
-
-// EmptyForAgents says "For agents"
-// in the language of msgs.
-func (msgs Messages) EmptyForAgents() string {
-	return Catalog.Format(msgs.locale, "emptyForAgents", nil)
-}
-
 // PaletteSettingsPage says "Settings: {page}"
 // in the language the app shows.
 func PaletteSettingsPage(page string) string { return In(i18n.Locale()).PaletteSettingsPage(page) }
@@ -1614,58 +1582,6 @@ func PaletteCommands() string { return In(i18n.Locale()).PaletteCommands() }
 // in the language of msgs.
 func (msgs Messages) PaletteCommands() string {
 	return Catalog.Format(msgs.locale, "paletteCommands", nil)
-}
-
-// PaletteConversations says "Recent Conversations"
-// in the language the app shows.
-func PaletteConversations() string { return In(i18n.Locale()).PaletteConversations() }
-
-// PaletteConversations says "Recent Conversations"
-// in the language of msgs.
-func (msgs Messages) PaletteConversations() string {
-	return Catalog.Format(msgs.locale, "paletteConversations", nil)
-}
-
-// PaletteConversationsLabel says "Resume Conversation"
-// in the language the app shows.
-func PaletteConversationsLabel() string { return In(i18n.Locale()).PaletteConversationsLabel() }
-
-// PaletteConversationsLabel says "Resume Conversation"
-// in the language of msgs.
-func (msgs Messages) PaletteConversationsLabel() string {
-	return Catalog.Format(msgs.locale, "paletteConversationsLabel", nil)
-}
-
-// PaletteConversationsPlaceholder says "Find a conversation to resume…"
-// in the language the app shows.
-func PaletteConversationsPlaceholder() string {
-	return In(i18n.Locale()).PaletteConversationsPlaceholder()
-}
-
-// PaletteConversationsPlaceholder says "Find a conversation to resume…"
-// in the language of msgs.
-func (msgs Messages) PaletteConversationsPlaceholder() string {
-	return Catalog.Format(msgs.locale, "paletteConversationsPlaceholder", nil)
-}
-
-// PaletteNoConversations says "No conversations yet. Coding agents’ conversations show here once Kero’s skill is set up for them."
-// in the language the app shows.
-func PaletteNoConversations() string { return In(i18n.Locale()).PaletteNoConversations() }
-
-// PaletteNoConversations says "No conversations yet. Coding agents’ conversations show here once Kero’s skill is set up for them."
-// in the language of msgs.
-func (msgs Messages) PaletteNoConversations() string {
-	return Catalog.Format(msgs.locale, "paletteNoConversations", nil)
-}
-
-// PaletteConversationRunning says "running"
-// in the language the app shows.
-func PaletteConversationRunning() string { return In(i18n.Locale()).PaletteConversationRunning() }
-
-// PaletteConversationRunning says "running"
-// in the language of msgs.
-func (msgs Messages) PaletteConversationRunning() string {
-	return Catalog.Format(msgs.locale, "paletteConversationRunning", nil)
 }
 
 // AgoNow says "now"
@@ -1928,14 +1844,14 @@ func (msgs Messages) PageKeyboard() string {
 	return Catalog.Format(msgs.locale, "pageKeyboard", nil)
 }
 
-// PageAgents says "Agents"
+// PageCli says "Command Line"
 // in the language the app shows.
-func PageAgents() string { return In(i18n.Locale()).PageAgents() }
+func PageCli() string { return In(i18n.Locale()).PageCli() }
 
-// PageAgents says "Agents"
+// PageCli says "Command Line"
 // in the language of msgs.
-func (msgs Messages) PageAgents() string {
-	return Catalog.Format(msgs.locale, "pageAgents", nil)
+func (msgs Messages) PageCli() string {
+	return Catalog.Format(msgs.locale, "pageCli", nil)
 }
 
 // PageAdvanced says "Advanced"
@@ -2160,11 +2076,11 @@ func (msgs Messages) SetSessionName() string {
 	return Catalog.Format(msgs.locale, "setSessionName", nil)
 }
 
-// SetSessionNameDetail says "Until you or an agent name one. With Pane You’re In, a pane running only its shell defers to the pane that needs yo…"
+// SetSessionNameDetail says "Until you name one. With Pane You’re In, a pane running only its shell defers to the pane that needs you most."
 // in the language the app shows.
 func SetSessionNameDetail() string { return In(i18n.Locale()).SetSessionNameDetail() }
 
-// SetSessionNameDetail says "Until you or an agent name one. With Pane You’re In, a pane running only its shell defers to the pane that needs yo…"
+// SetSessionNameDetail says "Until you name one. With Pane You’re In, a pane running only its shell defers to the pane that needs you most."
 // in the language of msgs.
 func (msgs Messages) SetSessionNameDetail() string {
 	return Catalog.Format(msgs.locale, "setSessionNameDetail", nil)
@@ -2320,26 +2236,6 @@ func (msgs Messages) SetRestoreSessionsDetail() string {
 	return Catalog.Format(msgs.locale, "setRestoreSessionsDetail", nil)
 }
 
-// SetResumeAgents says "Resume agents"
-// in the language the app shows.
-func SetResumeAgents() string { return In(i18n.Locale()).SetResumeAgents() }
-
-// SetResumeAgents says "Resume agents"
-// in the language of msgs.
-func (msgs Messages) SetResumeAgents() string {
-	return Catalog.Format(msgs.locale, "setResumeAgents", nil)
-}
-
-// SetResumeAgentsDetail says "Claude Code, Codex, Pi and OpenCode pick up their conversation where it was, once Kero’s skill is set up for them i…"
-// in the language the app shows.
-func SetResumeAgentsDetail() string { return In(i18n.Locale()).SetResumeAgentsDetail() }
-
-// SetResumeAgentsDetail says "Claude Code, Codex, Pi and OpenCode pick up their conversation where it was, once Kero’s skill is set up for them i…"
-// in the language of msgs.
-func (msgs Messages) SetResumeAgentsDetail() string {
-	return Catalog.Format(msgs.locale, "setResumeAgentsDetail", nil)
-}
-
 // SetStartup says "Startup"
 // in the language the app shows.
 func SetStartup() string { return In(i18n.Locale()).SetStartup() }
@@ -2450,21 +2346,21 @@ func (msgs Messages) AwakeOn() string {
 	return Catalog.Format(msgs.locale, "awakeOn", nil)
 }
 
-// AwakeAgents says "While agents work"
+// AwakeWorking says "While working"
 // in the language the app shows.
-func AwakeAgents() string { return In(i18n.Locale()).AwakeAgents() }
+func AwakeWorking() string { return In(i18n.Locale()).AwakeWorking() }
 
-// AwakeAgents says "While agents work"
+// AwakeWorking says "While working"
 // in the language of msgs.
-func (msgs Messages) AwakeAgents() string {
-	return Catalog.Format(msgs.locale, "awakeAgents", nil)
+func (msgs Messages) AwakeWorking() string {
+	return Catalog.Format(msgs.locale, "awakeWorking", nil)
 }
 
-// AwakeDetail says "Kero keeps this computer from sleeping as long as it runs, or while an agent on it works. Closing a Mac’s lid still…"
+// AwakeDetail says "Kero keeps this computer from sleeping as long as it runs, or while a session on it is working. Closing a Mac’s lid…"
 // in the language the app shows.
 func AwakeDetail() string { return In(i18n.Locale()).AwakeDetail() }
 
-// AwakeDetail says "Kero keeps this computer from sleeping as long as it runs, or while an agent on it works. Closing a Mac’s lid still…"
+// AwakeDetail says "Kero keeps this computer from sleeping as long as it runs, or while a session on it is working. Closing a Mac’s lid…"
 // in the language of msgs.
 func (msgs Messages) AwakeDetail() string {
 	return Catalog.Format(msgs.locale, "awakeDetail", nil)
@@ -3224,11 +3120,11 @@ func (msgs Messages) SetClipboardRead() string {
 	return Catalog.Format(msgs.locale, "setClipboardRead", nil)
 }
 
-// SetClipboardReadDetail says "As with OSC 52: agents asking for what you copied."
+// SetClipboardReadDetail says "As with OSC 52: programs asking for what you copied."
 // in the language the app shows.
 func SetClipboardReadDetail() string { return In(i18n.Locale()).SetClipboardReadDetail() }
 
-// SetClipboardReadDetail says "As with OSC 52: agents asking for what you copied."
+// SetClipboardReadDetail says "As with OSC 52: programs asking for what you copied."
 // in the language of msgs.
 func (msgs Messages) SetClipboardReadDetail() string {
 	return Catalog.Format(msgs.locale, "setClipboardReadDetail", nil)
@@ -3444,11 +3340,11 @@ func (msgs Messages) SetNotifyWaitingDetail() string {
 	return Catalog.Format(msgs.locale, "setNotifyWaitingDetail", nil)
 }
 
-// SetNotifyDone says "An agent finishes"
+// SetNotifyDone says "A program reports it’s done"
 // in the language the app shows.
 func SetNotifyDone() string { return In(i18n.Locale()).SetNotifyDone() }
 
-// SetNotifyDone says "An agent finishes"
+// SetNotifyDone says "A program reports it’s done"
 // in the language of msgs.
 func (msgs Messages) SetNotifyDone() string {
 	return Catalog.Format(msgs.locale, "setNotifyDone", nil)
@@ -3642,56 +3538,6 @@ func SetCliRow() string { return In(i18n.Locale()).SetCliRow() }
 // in the language of msgs.
 func (msgs Messages) SetCliRow() string {
 	return Catalog.Format(msgs.locale, "setCliRow", nil)
-}
-
-// SetSkills says "Skills for agents"
-// in the language the app shows.
-func SetSkills() string { return In(i18n.Locale()).SetSkills() }
-
-// SetSkills says "Skills for agents"
-// in the language of msgs.
-func (msgs Messages) SetSkills() string {
-	return Catalog.Format(msgs.locale, "setSkills", nil)
-}
-
-// SetSkillsDetail says "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells them, as the…"
-// in the language the app shows.
-func SetSkillsDetail() string { return In(i18n.Locale()).SetSkillsDetail() }
-
-// SetSkillsDetail says "Teaches agents to start sessions and panes, drive them, wait for them and report their status, and tells them, as the…"
-// in the language of msgs.
-func (msgs Messages) SetSkillsDetail() string {
-	return Catalog.Format(msgs.locale, "setSkillsDetail", nil)
-}
-
-// SetSkillInstalled says "Installed"
-// in the language the app shows.
-func SetSkillInstalled() string { return In(i18n.Locale()).SetSkillInstalled() }
-
-// SetSkillInstalled says "Installed"
-// in the language of msgs.
-func (msgs Messages) SetSkillInstalled() string {
-	return Catalog.Format(msgs.locale, "setSkillInstalled", nil)
-}
-
-// SetSkillOutdated says "Installed, from an older Kero"
-// in the language the app shows.
-func SetSkillOutdated() string { return In(i18n.Locale()).SetSkillOutdated() }
-
-// SetSkillOutdated says "Installed, from an older Kero"
-// in the language of msgs.
-func (msgs Messages) SetSkillOutdated() string {
-	return Catalog.Format(msgs.locale, "setSkillOutdated", nil)
-}
-
-// SetSkillMissing says "Not installed"
-// in the language the app shows.
-func SetSkillMissing() string { return In(i18n.Locale()).SetSkillMissing() }
-
-// SetSkillMissing says "Not installed"
-// in the language of msgs.
-func (msgs Messages) SetSkillMissing() string {
-	return Catalog.Format(msgs.locale, "setSkillMissing", nil)
 }
 
 // SetProgramStatus says "Program status"
@@ -4416,16 +4262,6 @@ func (msgs Messages) FilesBadName(name string) string {
 	return Catalog.Format(msgs.locale, "filesBadName", map[string]any{"name": name})
 }
 
-// ChangesTurn says "Last Turn"
-// in the language the app shows.
-func ChangesTurn() string { return In(i18n.Locale()).ChangesTurn() }
-
-// ChangesTurn says "Last Turn"
-// in the language of msgs.
-func (msgs Messages) ChangesTurn() string {
-	return Catalog.Format(msgs.locale, "changesTurn", nil)
-}
-
 // ChangesUncommitted says "Uncommitted"
 // in the language the app shows.
 func ChangesUncommitted() string { return In(i18n.Locale()).ChangesUncommitted() }
@@ -4444,16 +4280,6 @@ func ChangesBranch() string { return In(i18n.Locale()).ChangesBranch() }
 // in the language of msgs.
 func (msgs Messages) ChangesBranch() string {
 	return Catalog.Format(msgs.locale, "changesBranch", nil)
-}
-
-// ChangesTurnTip says "What the agent changed since it last started working"
-// in the language the app shows.
-func ChangesTurnTip() string { return In(i18n.Locale()).ChangesTurnTip() }
-
-// ChangesTurnTip says "What the agent changed since it last started working"
-// in the language of msgs.
-func (msgs Messages) ChangesTurnTip() string {
-	return Catalog.Format(msgs.locale, "changesTurnTip", nil)
 }
 
 // ChangesUncommittedTip says "What isn't committed, untracked files too"
@@ -4504,16 +4330,6 @@ func ChangesNone() string { return In(i18n.Locale()).ChangesNone() }
 // in the language of msgs.
 func (msgs Messages) ChangesNone() string {
 	return Catalog.Format(msgs.locale, "changesNone", nil)
-}
-
-// ChangesNoneTurn says "The agent hasn't changed any files since it started working."
-// in the language the app shows.
-func ChangesNoneTurn() string { return In(i18n.Locale()).ChangesNoneTurn() }
-
-// ChangesNoneTurn says "The agent hasn't changed any files since it started working."
-// in the language of msgs.
-func (msgs Messages) ChangesNoneTurn() string {
-	return Catalog.Format(msgs.locale, "changesNoneTurn", nil)
 }
 
 // ChangesNoneUncommitted says "Everything is committed."
@@ -4674,56 +4490,6 @@ func ChangesTooLarge() string { return In(i18n.Locale()).ChangesTooLarge() }
 // in the language of msgs.
 func (msgs Messages) ChangesTooLarge() string {
 	return Catalog.Format(msgs.locale, "changesTooLarge", nil)
-}
-
-// ChangesRevert says "Revert"
-// in the language the app shows.
-func ChangesRevert() string { return In(i18n.Locale()).ChangesRevert() }
-
-// ChangesRevert says "Revert"
-// in the language of msgs.
-func (msgs Messages) ChangesRevert() string {
-	return Catalog.Format(msgs.locale, "changesRevert", nil)
-}
-
-// ChangesKeep says "Keep"
-// in the language the app shows.
-func ChangesKeep() string { return In(i18n.Locale()).ChangesKeep() }
-
-// ChangesKeep says "Keep"
-// in the language of msgs.
-func (msgs Messages) ChangesKeep() string {
-	return Catalog.Format(msgs.locale, "changesKeep", nil)
-}
-
-// ChangesRevertTip says "Put the old lines back in the file"
-// in the language the app shows.
-func ChangesRevertTip() string { return In(i18n.Locale()).ChangesRevertTip() }
-
-// ChangesRevertTip says "Put the old lines back in the file"
-// in the language of msgs.
-func (msgs Messages) ChangesRevertTip() string {
-	return Catalog.Format(msgs.locale, "changesRevertTip", nil)
-}
-
-// ChangesKeepTip says "Mark this change as reviewed"
-// in the language the app shows.
-func ChangesKeepTip() string { return In(i18n.Locale()).ChangesKeepTip() }
-
-// ChangesKeepTip says "Mark this change as reviewed"
-// in the language of msgs.
-func (msgs Messages) ChangesKeepTip() string {
-	return Catalog.Format(msgs.locale, "changesKeepTip", nil)
-}
-
-// ChangesRevertFailed says "Couldn't revert: {error}"
-// in the language the app shows.
-func ChangesRevertFailed(error string) string { return In(i18n.Locale()).ChangesRevertFailed(error) }
-
-// ChangesRevertFailed says "Couldn't revert: {error}"
-// in the language of msgs.
-func (msgs Messages) ChangesRevertFailed(error string) string {
-	return Catalog.Format(msgs.locale, "changesRevertFailed", map[string]any{"error": error})
 }
 
 // ViewerSaveFailed says "Couldn't save “{name}”: {error}"
@@ -6146,21 +5912,21 @@ func (msgs Messages) WorktreeTitle() string {
 	return Catalog.Format(msgs.locale, "worktreeTitle", nil)
 }
 
-// WorktreeDetailDefault says "Kero checks out a new branch from the default branch in a folder of its own, so the session’s agent works apart fro…"
+// WorktreeDetailDefault says "Kero checks out a new branch from the default branch in a folder of its own, so the session works apart from the others."
 // in the language the app shows.
 func WorktreeDetailDefault() string { return In(i18n.Locale()).WorktreeDetailDefault() }
 
-// WorktreeDetailDefault says "Kero checks out a new branch from the default branch in a folder of its own, so the session’s agent works apart fro…"
+// WorktreeDetailDefault says "Kero checks out a new branch from the default branch in a folder of its own, so the session works apart from the others."
 // in the language of msgs.
 func (msgs Messages) WorktreeDetailDefault() string {
 	return Catalog.Format(msgs.locale, "worktreeDetailDefault", nil)
 }
 
-// WorktreeDetailCurrent says "Kero checks out a new branch from the current branch in a folder of its own, so the session’s agent works apart fro…"
+// WorktreeDetailCurrent says "Kero checks out a new branch from the current branch in a folder of its own, so the session works apart from the others."
 // in the language the app shows.
 func WorktreeDetailCurrent() string { return In(i18n.Locale()).WorktreeDetailCurrent() }
 
-// WorktreeDetailCurrent says "Kero checks out a new branch from the current branch in a folder of its own, so the session’s agent works apart fro…"
+// WorktreeDetailCurrent says "Kero checks out a new branch from the current branch in a folder of its own, so the session works apart from the others."
 // in the language of msgs.
 func (msgs Messages) WorktreeDetailCurrent() string {
 	return Catalog.Format(msgs.locale, "worktreeDetailCurrent", nil)
@@ -6260,146 +6026,6 @@ func WorktreeRemoveAnyway() string { return In(i18n.Locale()).WorktreeRemoveAnyw
 // in the language of msgs.
 func (msgs Messages) WorktreeRemoveAnyway() string {
 	return Catalog.Format(msgs.locale, "worktreeRemoveAnyway", nil)
-}
-
-// SetSessionHistory says "Session history"
-// in the language the app shows.
-func SetSessionHistory() string { return In(i18n.Locale()).SetSessionHistory() }
-
-// SetSessionHistory says "Session history"
-// in the language of msgs.
-func (msgs Messages) SetSessionHistory() string {
-	return Catalog.Format(msgs.locale, "setSessionHistory", nil)
-}
-
-// SetSessionHistoryDetail says "List the coding agents' ended conversations in the sidebar, to resume them later or archive them."
-// in the language the app shows.
-func SetSessionHistoryDetail() string { return In(i18n.Locale()).SetSessionHistoryDetail() }
-
-// SetSessionHistoryDetail says "List the coding agents' ended conversations in the sidebar, to resume them later or archive them."
-// in the language of msgs.
-func (msgs Messages) SetSessionHistoryDetail() string {
-	return Catalog.Format(msgs.locale, "setSessionHistoryDetail", nil)
-}
-
-// EndedTitle says "Ended"
-// in the language the app shows.
-func EndedTitle() string { return In(i18n.Locale()).EndedTitle() }
-
-// EndedTitle says "Ended"
-// in the language of msgs.
-func (msgs Messages) EndedTitle() string {
-	return Catalog.Format(msgs.locale, "endedTitle", nil)
-}
-
-// EndedArchived says "Archived"
-// in the language the app shows.
-func EndedArchived() string { return In(i18n.Locale()).EndedArchived() }
-
-// EndedArchived says "Archived"
-// in the language of msgs.
-func (msgs Messages) EndedArchived() string {
-	return Catalog.Format(msgs.locale, "endedArchived", nil)
-}
-
-// EndedArchive says "Archive"
-// in the language the app shows.
-func EndedArchive() string { return In(i18n.Locale()).EndedArchive() }
-
-// EndedArchive says "Archive"
-// in the language of msgs.
-func (msgs Messages) EndedArchive() string {
-	return Catalog.Format(msgs.locale, "endedArchive", nil)
-}
-
-// EndedShowAll says "Show all {n}"
-// in the language the app shows.
-func EndedShowAll(n int) string { return In(i18n.Locale()).EndedShowAll(n) }
-
-// EndedShowAll says "Show all {n}"
-// in the language of msgs.
-func (msgs Messages) EndedShowAll(n int) string {
-	return Catalog.Format(msgs.locale, "endedShowAll", map[string]any{"n": n})
-}
-
-// EndedResume says "Resume"
-// in the language the app shows.
-func EndedResume() string { return In(i18n.Locale()).EndedResume() }
-
-// EndedResume says "Resume"
-// in the language of msgs.
-func (msgs Messages) EndedResume() string {
-	return Catalog.Format(msgs.locale, "endedResume", nil)
-}
-
-// EndedRestore says "Restore"
-// in the language the app shows.
-func EndedRestore() string { return In(i18n.Locale()).EndedRestore() }
-
-// EndedRestore says "Restore"
-// in the language of msgs.
-func (msgs Messages) EndedRestore() string {
-	return Catalog.Format(msgs.locale, "endedRestore", nil)
-}
-
-// EndedDelete says "Delete"
-// in the language the app shows.
-func EndedDelete() string { return In(i18n.Locale()).EndedDelete() }
-
-// EndedDelete says "Delete"
-// in the language of msgs.
-func (msgs Messages) EndedDelete() string {
-	return Catalog.Format(msgs.locale, "endedDelete", nil)
-}
-
-// EndedArchiveAll says "Archive All"
-// in the language the app shows.
-func EndedArchiveAll() string { return In(i18n.Locale()).EndedArchiveAll() }
-
-// EndedArchiveAll says "Archive All"
-// in the language of msgs.
-func (msgs Messages) EndedArchiveAll() string {
-	return Catalog.Format(msgs.locale, "endedArchiveAll", nil)
-}
-
-// EndedDeleteAll says "Delete All…"
-// in the language the app shows.
-func EndedDeleteAll() string { return In(i18n.Locale()).EndedDeleteAll() }
-
-// EndedDeleteAll says "Delete All…"
-// in the language of msgs.
-func (msgs Messages) EndedDeleteAll() string {
-	return Catalog.Format(msgs.locale, "endedDeleteAll", nil)
-}
-
-// EndedDeleteAllTitle says "Delete {n} archived conversations?"
-// in the language the app shows.
-func EndedDeleteAllTitle(n int) string { return In(i18n.Locale()).EndedDeleteAllTitle(n) }
-
-// EndedDeleteAllTitle says "Delete {n} archived conversations?"
-// in the language of msgs.
-func (msgs Messages) EndedDeleteAllTitle(n int) string {
-	return Catalog.Format(msgs.locale, "endedDeleteAllTitle", map[string]any{"n": n})
-}
-
-// EndedDeleteAllDetail says "Kero forgets them; each agent keeps its own history of the conversation."
-// in the language the app shows.
-func EndedDeleteAllDetail() string { return In(i18n.Locale()).EndedDeleteAllDetail() }
-
-// EndedDeleteAllDetail says "Kero forgets them; each agent keeps its own history of the conversation."
-// in the language of msgs.
-func (msgs Messages) EndedDeleteAllDetail() string {
-	return Catalog.Format(msgs.locale, "endedDeleteAllDetail", nil)
-}
-
-// EndedSetUpSkill says "Set up Kero's skill for your agents to list their ended conversations here"
-// in the language the app shows.
-func EndedSetUpSkill() string { return In(i18n.Locale()).EndedSetUpSkill() }
-
-// EndedSetUpSkill says "Set up Kero's skill for your agents to list their ended conversations here"
-// in the language of msgs.
-func (msgs Messages) EndedSetUpSkill() string {
-	return Catalog.Format(msgs.locale, "endedSetUpSkill", nil)
 }
 
 // ActionQuickTerminal says "Quick Terminal"

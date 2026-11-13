@@ -19,7 +19,7 @@ func TestDiffState(t *testing.T) {
 		{ID: "s2", Name: "old", Project: "pr", Panes: []proto.Pane{pane("p3", proto.Idle)}},
 	}}
 	waiting := pane("p1", proto.Waiting)
-	waiting.Message, waiting.Kind, waiting.Agent, waiting.Since = "Allow Bash?", "permission", "claude", 1234
+	waiting.Message, waiting.Kind, waiting.Since = "Allow Bash?", "permission", 1234
 	ran := pane("p2", proto.Idle)
 	ran.CommandExit = &one
 	next := proto.State{Sessions: []proto.Session{
@@ -46,7 +46,7 @@ func TestDiffState(t *testing.T) {
 	if e := evs[0]; e.From != "api" || e.To != "backend" {
 		t.Errorf("renamed %+v", e)
 	}
-	if e := evs[1]; e.From != "working" || e.To != "waiting" || e.Message != "Allow Bash?" || e.Kind != "permission" || e.Agent != "claude" || e.Time != 1234 || e.ExitCode != nil {
+	if e := evs[1]; e.From != "working" || e.To != "waiting" || e.Message != "Allow Bash?" || e.Kind != "permission" || e.Time != 1234 || e.ExitCode != nil {
 		t.Errorf("status %+v", e)
 	}
 	if e := evs[2]; e.ExitCode == nil || *e.ExitCode != 1 {

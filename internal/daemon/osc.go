@@ -15,7 +15,7 @@ import (
 
 // oscScanner finds, in a program's output, the OSC sequences the daemon
 // handles itself, which the emulator ignores: OSC 7501 (program status),
-// OSC 133 (shell prompts) and OSC 9;4 (progress), and full resets (RIS).
+// and OSC 133 (shell prompts), and full resets (RIS).
 // It follows them across reads.
 type oscScanner struct {
 	state int // 0 text, 1 after ESC, 2 in an OSC we keep, 3 in one we skip, 4 ESC in an OSC
@@ -25,7 +25,7 @@ type oscScanner struct {
 
 const maxOSC = 4096 // OSC 7501's limit on a whole sequence
 
-// scan calls fn with the body of each OSC 7501, 133 and 9;4 in p (what is
+// scan calls fn with the body of each OSC 7501 and 133 in p (what is
 // between "ESC ]" and the terminator), and reset at each RIS (ESC c).
 func (o *oscScanner) scan(p []byte, fn func(body []byte), reset func()) {
 	for _, b := range p {
@@ -88,7 +88,7 @@ func (o *oscScanner) end(fn func([]byte)) {
 
 // wanted reports whether what was collected may still be an OSC kept.
 func (o *oscScanner) wanted() bool {
-	for _, pre := range [][]byte{[]byte("7501;"), []byte("133;"), []byte("9;4;")} {
+	for _, pre := range [][]byte{[]byte("7501;"), []byte("133;")} {
 		n := min(len(o.buf), len(pre))
 		if bytes.Equal(o.buf[:n], pre[:n]) {
 			return true
@@ -226,11 +226,6 @@ func (s *pane) handleOSC(body []byte) {
 			return
 		}
 		s.applyReport(rep.rec)
-	case bytes.HasPrefix(body, []byte("9;4;")):
-		// ConEmu's progress (OSC 9;4), which only agents' rules read: a
-		// program's progress bar, as Neovim's for its language servers,
-		// tells no work the user waits on.
-		s.progress = string(body[2:])
 	case bytes.HasPrefix(body, []byte("133;A")):
 		// A new prompt: what ran is over.
 		s.dropLive()
@@ -249,15 +244,14 @@ func (s *pane) handleOSC(body []byte) {
 	}
 }
 
-// fullReset forgets every record and the progress, as a full reset (RIS)
-// does; s.mu is held.
+// fullReset forgets every record, as a full reset (RIS) does; s.mu is
+// held.
 func (s *pane) fullReset() {
 	if len(s.records) > 0 {
 		clear(s.records)
 		s.fromRecords()
 	}
 	s.reported = false
-	s.progress = ""
 }
 
 func (s *pane) applyReport(r proto.Record) {

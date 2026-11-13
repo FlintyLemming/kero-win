@@ -14,11 +14,11 @@ import (
 )
 
 // gitFollow follows the git worktrees the panes work in: each one's
-// branch and changes (proto.Pane.Git), and the snapshots of agents' turns
-// (proto.Pane.Turn). It looks once a second, at the files of each
-// worktree's git directory alone, and runs git status only when one of
-// them changed, when a pane's status did, while an agent works there
-// (every few seconds), and now and then besides; never on a fast poll.
+// branch and changes (proto.Pane.Git). It looks once a second, at the
+// files of each worktree's git directory alone, and runs git status only
+// when one of them changed, when a pane's status did, while a program
+// works there (every few seconds), and now and then besides; never on a
+// fast poll.
 type gitFollow struct {
 	d    *Daemon
 	wake chan struct{}
@@ -49,7 +49,7 @@ type repoStatus struct {
 
 const (
 	gitTimeout     = 3 * time.Second  // a refresh's git status
-	gitWorkingStep = 4 * time.Second  // between refreshes while an agent works there
+	gitWorkingStep = 4 * time.Second  // between refreshes while a program works there
 	gitIdleStep    = 30 * time.Second // between refreshes otherwise
 )
 
@@ -245,32 +245,6 @@ func (g *gitFollow) refresh(rs *repoStatus, stamp string, now time.Time) {
 	}
 }
 
-// snapshot starts a pane's turn: a snapshot of its worktree as its agent
-// starts working, which its changes since are of. A turn that started
-// later stands.
-func (g *gitFollow) snapshot(p *pane, dir string, at time.Time) {
-	if g == nil || dir == "" || !settings.Load().GitStatus {
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-	r, err := git.Open(ctx, dir)
-	if err != nil {
-		return
-	}
-	tree, err := r.Snapshot(ctx)
-	if err != nil {
-		g.d.log.Printf("snapshot of %s: %v", r.Root, err)
-		return
-	}
-	p.mu.Lock()
-	if p.info.Turn == nil || p.info.Turn.At < at.UnixMilli() {
-		p.info.Turn = &proto.Turn{Tree: tree, Root: r.Root, At: at.UnixMilli()}
-	}
-	p.mu.Unlock()
-	g.d.changed()
-}
-
 // gitOf returns a pane's worktree and the revision of a base in it, with
 // what it is to show (git.Repo.Base).
 func (d *Daemon) gitOf(ctx context.Context, ref, base string) (*pane, git.Repo, string, string, error) {
@@ -279,21 +253,13 @@ func (d *Daemon) gitOf(ctx context.Context, ref, base string) (*pane, git.Repo, 
 		return nil, git.Repo{}, "", "", fmt.Errorf("no session or pane %q", ref)
 	}
 	pn.mu.Lock()
-	dir, turn := pn.info.WorkDir(), pn.info.Turn
+	dir := pn.info.WorkDir()
 	pn.mu.Unlock()
-	tree := ""
-	if base == git.BaseTurn {
-		if turn == nil {
-			return nil, git.Repo{}, "", "", errors.New("the pane's agent hasn't started a turn")
-		}
-		// The turn's worktree, where the agent worked then.
-		dir, tree = turn.Root, turn.Tree
-	}
 	r, err := git.Open(ctx, dir)
 	if err != nil {
 		return nil, git.Repo{}, "", "", err
 	}
-	rev, name, err := r.Base(ctx, base, tree)
+	rev, name, err := r.Base(ctx, base)
 	return pn, r, rev, name, err
 }
 
@@ -332,42 +298,6 @@ func (d *Daemon) gitText(p proto.GitParams) (proto.GitText, error) {
 		return proto.GitText{Hash: t.Hash, Same: true}, nil
 	}
 	return proto.GitText{Old: t.Old, New: t.New, Hash: t.Hash, Binary: t.Binary, Large: t.Large, Patch: t.Patch}, nil
-}
-
-// gitRevert writes a file changed since a base back as it was in part:
-// only while no agent works in its worktree, whose edits it would race,
-// and only a file the base's diff shows, as it was when shown. It returns
-// the hash of what it wrote.
-func (d *Daemon) gitRevert(p proto.GitWriteParams) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	_, r, rev, _, err := d.gitOf(ctx, p.Pane, p.Base)
-	if err != nil {
-		return "", err
-	}
-	d.mu.Lock()
-	for _, o := range d.panes {
-		o.mu.Lock()
-		busy := o.info.Status == proto.Working && proto.Within(o.info.WorkDir(), r.Root)
-		o.mu.Unlock()
-		if busy {
-			d.mu.Unlock()
-			return "", errors.New("an agent is working in this worktree: wait for it to finish")
-		}
-	}
-	d.mu.Unlock()
-	changed, err := r.Changed(ctx, rev, p.Path)
-	if err != nil {
-		return "", err
-	}
-	if !changed {
-		return "", fmt.Errorf("%s has no changes to revert", p.Path)
-	}
-	if err := r.Write(p.Path, p.Hash, p.Text); err != nil {
-		return "", err
-	}
-	d.git.poke(r.Root)
-	return git.Hash([]byte(p.Text)), nil
 }
 
 // gitPatch returns a pane's worktree's changes since a base as git diff

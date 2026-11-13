@@ -104,7 +104,7 @@ type Status string
 const (
 	// Idle: at a prompt, or a program waiting quietly.
 	Idle Status = "idle"
-	// Working: a program is busy, as an agent thinking or a build.
+	// Working: a program is busy, as a build.
 	Working Status = "working"
 	// Waiting: a program needs the user: it asked a question, rang the
 	// bell or posted a notification.
@@ -138,11 +138,6 @@ type State struct {
 	// Viewed is the session a client shows in a focused window.
 	Viewed  string `json:"viewed,omitempty"`
 	Started int64  `json:"started"` // unix ms, the daemon's start
-	// Conversations counts the changes to the conversations kerod
-	// remembers that show in the sidebar, for the app to ask for them
-	// anew (the conversations method) rather than have them in every
-	// state.
-	Conversations uint64 `json:"conversations,omitempty"`
 }
 
 // Project groups sessions, usually those of one repository.
@@ -166,10 +161,8 @@ type Pane struct {
 	// Process is the foreground program, "" while the shell is.
 	Process string `json:"process,omitempty"`
 	// ProcessDir is the foreground program's working directory, as a
-	// worktree a coding agent went into, while it is not the shell's.
+	// worktree a program went into, while it is not the shell's.
 	ProcessDir string `json:"processDir,omitempty"`
-	// Agent names the coding agent running in the foreground, when known.
-	Agent string `json:"agent,omitempty"`
 	// Runtime names the interpreter of a foreground script, as "node",
 	// when Process is the script's name.
 	Runtime string `json:"runtime,omitempty"`
@@ -200,9 +193,6 @@ type Pane struct {
 	// CommandExit is the exit status of the command the pane started
 	// with, once it ended and the pane went on with its shell.
 	CommandExit *int `json:"commandExit,omitempty"`
-	// AgentSession is the coding agent's own session, as its hook told
-	// (kero hook), while the agent runs: what a restore resumes.
-	AgentSession *AgentSession `json:"agentSession,omitempty"`
 	// Restored: the daemon restarted (as after a reboot) and this pane's
 	// shell was started again in its directory, under its old scrollback.
 	Restored bool `json:"restored,omitempty"`
@@ -212,9 +202,6 @@ type Pane struct {
 	// Git is the git worktree the pane works in (WorkDir), nil for none,
 	// or while the configuration's git-status is off.
 	Git *GitInfo `json:"git,omitempty"`
-	// Turn is where the pane's agent last started working: a snapshot of
-	// its worktree, which its changes since are of.
-	Turn *Turn `json:"turn,omitempty"`
 }
 
 // GitInfo is a git worktree's branch and changes, as kerod last found
@@ -239,60 +226,6 @@ type GitInfo struct {
 	State string `json:"state,omitempty"`
 }
 
-// Turn is a snapshot of a worktree, as an agent's turn started from it.
-type Turn struct {
-	Tree string `json:"tree"` // the tree's id
-	Root string `json:"root"` // the worktree's
-	At   int64  `json:"at"`   // unix ms
-}
-
-// AgentSession is a coding agent's session: Claude Code's or Codex's,
-// by its id.
-type AgentSession struct {
-	Agent string `json:"agent"` // "claude", "codex", "pi" or "opencode"
-	ID    string `json:"id"`
-}
-
-// Conversation is a coding agent's conversation that ran in one of
-// kerod's panes, as kerod remembers it after the pane is gone, to resume
-// (kero history, kero resume).
-type Conversation struct {
-	Agent string `json:"agent"` // as AgentSession's
-	ID    string `json:"id"`
-	Dir   string `json:"dir,omitempty"` // where the agent worked
-	// Project is the project of the session it ran in, Name that
-	// session's name, the user's or an agent's, and Title what the
-	// agent titled the conversation.
-	Project string `json:"project,omitempty"`
-	Name    string `json:"name,omitempty"`
-	Title   string `json:"title,omitempty"`
-	Started int64  `json:"started"` // unix ms
-	Updated int64  `json:"updated"` // when it last ran
-	// Session and Pane run it now; "" when none does.
-	Session string `json:"session,omitempty"`
-	Pane    string `json:"pane,omitempty"`
-	// Archived: the user moved it to the sidebar's Archived, until it
-	// runs again.
-	Archived bool `json:"archived,omitempty"`
-}
-
-// Label is what to call a conversation: its session's name, else its
-// title, else its directory's name.
-func (c *Conversation) Label() string {
-	switch {
-	case c.Name != "":
-		return c.Name
-	case c.Title != "":
-		return c.Title
-	case c.Dir != "":
-		return DirName(c.Dir)
-	}
-	return c.Agent
-}
-
-// AgentNames are the coding agents' names as they show them.
-var AgentNames = map[string]string{"claude": "Claude Code", "codex": "Codex", "pi": "Pi", "opencode": "OpenCode"}
-
 // Session is a row of the sidebar: one task, with its terminals, its
 // panes, side by side. Its Pane fields are those of its lead pane, the
 // one that most needs the user (see Lead), so that a session reads as one.
@@ -300,10 +233,7 @@ type Session struct {
 	Pane
 	ID      string `json:"id"` // the session's, not the lead pane's
 	Project string `json:"project"`
-	Name    string `json:"name,omitempty"` // set by the user, or an agent
-	// AgentNamed tells a Name an agent gave, for its conversation: the
-	// next conversation in the session's first pane names it anew.
-	AgentNamed bool `json:"agentNamed,omitempty"`
+	Name    string `json:"name,omitempty"` // set by the user
 	// Panes are the session's terminals; Layout arranges them, nil for
 	// the first alone.
 	Panes  []Pane  `json:"panes"`
@@ -435,7 +365,7 @@ func (p *Pane) WorkDir() string {
 	return p.Dir
 }
 
-// What names a session the user or an agent didn't (settings'
+// What names a session the user didn't (settings'
 // session-name).
 const (
 	// NameFocused: the program in the pane the user is in, else the
@@ -445,8 +375,8 @@ const (
 	NameFolder  = "folder" // the first pane's directory, whatever runs
 )
 
-// DisplayName is the name to show for a session: the user's or an agent's,
-// else the title a program in the foreground set, else its directory's
+// DisplayName is the name to show for a session: the user's, else the
+// title a program in the foreground set, else its directory's
 // name; from, one of the Name constants, picks the pane it comes from.
 func (s *Session) DisplayName(from string) string {
 	if s.Name != "" {
@@ -468,9 +398,6 @@ func (s *Session) DisplayName(from string) string {
 	if p.Process != "" {
 		if t := CleanTitle(p.Title); t != "" && !looksLikePath(t) {
 			return t
-		}
-		if p.Agent != "" {
-			return p.Agent
 		}
 	}
 	// A session of browsers alone goes by its page: beside a terminal,
@@ -496,7 +423,7 @@ func (s *Session) hasTerminal() bool {
 	return false
 }
 
-// CleanTitle strips the status glyphs agents put before their titles:
+// CleanTitle strips the status glyphs programs put before their titles:
 // spinners (braille, stars) and bullets.
 func CleanTitle(t string) string {
 	t = strings.TrimSpace(t)
@@ -510,8 +437,8 @@ func CleanTitle(t string) string {
 	return t
 }
 
-// TitleBusy reports whether a title shows a spinner, as agents' titles do
-// while they work: a braille pattern, or a spinner's star.
+// TitleBusy reports whether a title shows a spinner, as some programs'
+// titles do while they work: a braille pattern, or a spinner's star.
 func TitleBusy(t string) bool {
 	r, _ := firstRune(strings.TrimSpace(t))
 	return r > 0x2800 && r <= 0x28FF || strings.ContainsRune("◐◓◑◒", r)
@@ -750,9 +677,6 @@ type (
 	RenameParams struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
-		// By is the pane the rename comes from, when one does: a name
-		// from a pane running an agent is the agent's.
-		By string `json:"by,omitempty"`
 	}
 	MoveParams struct {
 		ID      string `json:"id"`
@@ -868,38 +792,10 @@ type (
 	}
 	// ReportParams carry a program's status report to pane ID, as the
 	// body of an OSC 7501 after "7501;": kero report sends it so when it
-	// has no terminal to write it to, as under an agent's shell tool.
+	// has no terminal to write it to.
 	ReportParams struct {
 		ID     string `json:"id"`
 		Report string `json:"report"`
-	}
-	// AgentSessionParams tell a pane's agent's session (kero hook).
-	// The pane is the one whose shell runs PID, the hook's process, else
-	// the one that can only be the agent's: an agent's service that panes
-	// share, as Codex's app server, runs hooks under none.
-	AgentSessionParams struct {
-		PID     int    `json:"pid"`
-		Agent   string `json:"agent"`
-		Session string `json:"session"`
-		Dir     string `json:"dir,omitempty"` // the agent's, to tell its pane by
-	}
-	// ConversationParams names a conversation (Conversation), to resume
-	// in a session after After, of Cols and Rows, to forget, or to
-	// archive or not, as Archived.
-	ConversationParams struct {
-		Agent    string `json:"agent"`
-		ID       string `json:"id"`
-		After    string `json:"after,omitempty"`
-		Cols     int    `json:"cols,omitempty"`
-		Rows     int    `json:"rows,omitempty"`
-		Archived bool   `json:"archived,omitempty"`
-	}
-	// AgentSessionResult is the pane told of, and its session; Away: the
-	// agent runs under none of kero's shells, and so do its commands.
-	AgentSessionResult struct {
-		Pane    string `json:"pane"`
-		Session string `json:"session"`
-		Away    bool   `json:"away,omitempty"`
 	}
 	ProjectParams struct {
 		ID   string `json:"id,omitempty"`
@@ -914,8 +810,8 @@ type (
 		Text string `json:"text"`
 	}
 
-	// GitParams ask about a pane's worktree, since a base: "turn" (its
-	// Turn), "head" or "branch" (where HEAD left the default branch).
+	// GitParams ask about a pane's worktree, since a base: "head" or
+	// "branch" (where HEAD left the default branch).
 	// Path and OldPath name a file, slash-separated from the worktree's
 	// root, the file of a rename was OldPath in the base.
 	GitParams struct {
@@ -955,14 +851,5 @@ type (
 		Binary bool   `json:"binary,omitempty"`
 		Large  bool   `json:"large,omitempty"`
 		Patch  string `json:"patch,omitempty"`
-	}
-	// GitWriteParams write a file of a pane's worktree back as it was in
-	// part (git.revert): Text, when its content still hashes to Hash.
-	GitWriteParams struct {
-		Pane string `json:"pane"`
-		Base string `json:"base"`
-		Path string `json:"path"`
-		Hash string `json:"hash"`
-		Text string `json:"text"`
 	}
 )

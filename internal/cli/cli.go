@@ -1,5 +1,5 @@
-// Package cli is the kero command: sessions driven from a shell or by an
-// agent, through the daemon the app shows.
+// Package cli is the kero command: sessions driven from a shell or a
+// script, through the daemon the app shows.
 package cli
 
 import (
@@ -29,7 +29,7 @@ import (
 	"kero/internal/update"
 )
 
-const usage = `kero — terminal sessions that keep running, for you and your agents
+const usage = `kero — terminal sessions that keep running
 
 Usage:
   kero                          open the app
@@ -80,15 +80,14 @@ Usage:
                                   target closes or the timeout comes first)
       -t, --timeout <dur>         stop watching after this long
   kero status [target] [--json]
-  kero diff [target] [--turn | --branch] [path…]
+  kero diff [target] [--branch] [path…]
                                 the changes in the pane's git worktree, as
                                 git diff prints them: since HEAD, untracked
-                                files too; --turn since its agent last
-                                started working; --branch since it left
-                                the default branch
+                                files too; --branch since it left the
+                                default branch
   kero browser [target] <command> [args…]
                                 drive a browser pane's page (needs Remote
-                                Control, in Settings › Agents); the target
+                                Control, in Settings › Command Line); the target
                                 is a browser pane, or a session, for its
                                 browser (default: this session's)
       open <url>                  go to a page, and wait for it to load
@@ -111,13 +110,6 @@ Usage:
                                   selector
       --domain <domain>           cookies of a site and its subdomains
       -t, --timeout <dur>         how long to wait (default 10s)
-  kero history [query] [-p project] [-n count] [--json]
-                                the agents' conversations panes ran, the
-                                last to run first, to resume
-  kero resume <conversation> [-f]
-                                start a session resuming a conversation
-                                (its id, a prefix of it, or its name), or
-                                show the one running it, printing its id
   kero rename <session> <name>
   kero focus <target>           show a session (and pane) in the app
   kero close <target>           end a session (or, given a pane, the pane)
@@ -131,7 +123,7 @@ Usage:
                                 report this program's status (OSC 7501):
                                 idle, working, done, blocked, error, clear
   kero do <action> [key=value…]  run an action of the app, as its menus do
-                                (needs Remote Control, in Settings › Agents)
+                                (needs Remote Control, in Settings › Command Line)
   kero actions                  list the actions kero do runs
   kero config path|show|edit|check
                                 the configuration file: where it is, every
@@ -141,8 +133,6 @@ Usage:
   kero projects move <project> <position|top|bottom|up|down>
                                 move a project in that order (1 is the
                                 top)
-  kero skill setup|status|show|remove
-                                teach coding agents to use kero
   kero clients [--json]         list who is connected to kerod
   kero hosts [ls]               the other machines Kero reaches
   kero hosts add <name> <address> [--remote-control]
@@ -174,7 +164,7 @@ ambiguous one), 4 kerod unreachable.
 
 // Commands lists the subcommands, which main sends here.
 var Commands = []string{"ls", "list", "new", "split", "send", "key", "prompt", "read", "capture", "wait", "events", "status", "diff",
-	"history", "resume", "rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "skill", "hook", "daemon", "do", "actions", "config",
+	"rename", "focus", "close", "kill", "restart", "notify", "report", "projects", "daemon", "do", "actions", "config",
 	"browser", "hosts", "clients", "__bridge", "-H", "--host", "help", "--help", "-h", "version", "--version"}
 
 // IsCommand reports whether an argument starts a command of the CLI, as
@@ -198,11 +188,10 @@ func (e exitStatus) Error() string { return fmt.Sprintf("exit status %d", int(e)
 
 // Run runs a subcommand, returning the exit code.
 func Run(args []string) int {
-	SyncSkill()
 	host, env, args, err := splitHost(args)
 	if err == nil && host != "" && len(args) > 0 && localOnly[args[0]] {
 		// $KERO_HOST is for what acts on sessions: the rest is of this
-		// machine, as an agent's hook in a shell whose profile sets it.
+		// machine, as a script in a shell whose profile sets it.
 		if env {
 			host = ""
 		} else {
@@ -308,10 +297,6 @@ func run(args []string, host string) error {
 			}
 		}
 		return w.Flush()
-	case "skill":
-		return skillCmd(args)
-	case "hook":
-		return hookCmd(args)
 	case "config":
 		return configCmd(args)
 	}
@@ -631,12 +616,9 @@ func run(args []string, host string) error {
 		return nil
 
 	case "diff":
-		f, err := parse(args, nil, map[string]string{"turn": "turn", "branch": "branch", "base": "branch"})
+		f, err := parse(args, nil, map[string]string{"branch": "branch", "base": "branch"})
 		if err != nil {
 			return err
-		}
-		if f.set["turn"] && f.set["branch"] {
-			return usageErr("kero diff: --turn or --branch, not both")
 		}
 		// A target first, unless it names none: then every argument is a
 		// path, of the pane the command runs in.
@@ -655,13 +637,13 @@ func run(args []string, host string) error {
 			}
 		}
 		base := "head"
-		switch {
-		case f.set["turn"]:
-			base = "turn"
-		case f.set["branch"]:
+		if f.set["branch"] {
 			base = "branch"
 		}
-		pane := diffPane(t, base == "turn")
+		pane := t.s.PaneByID(t.pane)
+		if pane == nil {
+			pane = t.s.FocusPane()
+		}
 		if pane == nil || pane.Git == nil {
 			return errors.New("not in a git repository (or git-status is off)")
 		}
@@ -681,59 +663,6 @@ func run(args []string, host string) error {
 		}
 		return nil
 
-	case "history":
-		f, err := parse(args, map[string]string{"p": "project", "project": "project", "n": "count", "count": "count"}, map[string]string{"json": "json", "j": "json"})
-		if err != nil {
-			return err
-		}
-		list, err := conversations(c, st, f.vals["project"], strings.Join(f.pos, " "))
-		if err != nil {
-			return err
-		}
-		n := 20
-		if v := f.vals["count"]; v != "" {
-			if n, err = strconv.Atoi(v); err != nil || n < 0 {
-				return usageErr("kero history -n takes a count")
-			}
-		}
-		if n > 0 && len(list) > n && !f.set["json"] {
-			list = list[:n]
-		}
-		if f.set["json"] {
-			return printJSON(list)
-		}
-		listConversations(st, list)
-		return nil
-
-	case "resume":
-		f, err := parse(args, nil, map[string]string{"f": "focus", "focus": "focus", "json": "json"})
-		if err != nil {
-			return err
-		}
-		if len(f.pos) == 0 {
-			return usageErr("kero resume <conversation> (see kero history)")
-		}
-		list, err := conversations(c, st, "", "")
-		if err != nil {
-			return err
-		}
-		conv, err := findConversation(list, strings.Join(f.pos, " "))
-		if err != nil {
-			return err
-		}
-		var s proto.Session
-		if err := c.Call("conversation.resume", proto.ConversationParams{Agent: conv.Agent, ID: conv.ID, After: os.Getenv("KERO_SESSION")}, &s); err != nil {
-			return err
-		}
-		if f.set["focus"] {
-			c.Call("select", proto.FocusParams{Session: s.ID}, nil)
-		}
-		if f.set["json"] {
-			return printJSON(s)
-		}
-		fmt.Println(s.ID)
-		return nil
-
 	case "rename":
 		if len(args) < 2 {
 			return usageErr("kero rename <session> <name>")
@@ -742,7 +671,7 @@ func run(args []string, host string) error {
 		if err != nil {
 			return err
 		}
-		return c.Call("rename", proto.RenameParams{ID: t.s.ID, Name: strings.Join(args[1:], " "), By: os.Getenv("KERO_PANE")}, nil)
+		return c.Call("rename", proto.RenameParams{ID: t.s.ID, Name: strings.Join(args[1:], " ")}, nil)
 
 	case "focus":
 		if len(args) < 1 {
@@ -882,25 +811,6 @@ func find(st proto.State, ref string) (target, error) {
 	}
 	slices.Sort(ids)
 	return target{}, fmt.Errorf("%w: %q names several: %s", errNotFound, ref, strings.Join(ids, ", "))
-}
-
-// diffPane is the pane whose worktree kero diff shows: the target's, or
-// for a turn, the pane of its session whose agent started one, the
-// target first.
-func diffPane(t target, turn bool) *proto.Pane {
-	p := t.s.PaneByID(t.pane)
-	if p == nil {
-		p = t.s.FocusPane()
-	}
-	if !turn || p == nil || p.Turn != nil {
-		return p
-	}
-	for i := range t.s.Panes {
-		if t.s.Panes[i].Turn != nil {
-			return &t.s.Panes[i]
-		}
-	}
-	return p
 }
 
 // repoPath writes a path given on the command line, relative to the
@@ -1163,84 +1073,6 @@ func StopDaemon() error {
 	return errors.New("kerod did not stop")
 }
 
-// conversations lists the conversations kerod remembers, of a project
-// (by id or name) when one is named, matching query when there is one.
-func conversations(c *client.Client, st proto.State, project, query string) ([]proto.Conversation, error) {
-	var list []proto.Conversation
-	if err := c.Call("conversations", nil, &list); err != nil {
-		if strings.Contains(err.Error(), "unknown method") {
-			return nil, errors.New("this kerod remembers no conversations: update it, or run `kero daemon restart`")
-		}
-		return nil, err
-	}
-	if project != "" {
-		id := ""
-		for _, p := range st.Projects {
-			if p.ID == project || strings.EqualFold(p.Name, project) {
-				id = p.ID
-			}
-		}
-		if id == "" {
-			return nil, fmt.Errorf("no project %q", project)
-		}
-		list = slices.DeleteFunc(list, func(cv proto.Conversation) bool { return cv.Project != id })
-	}
-	if q := strings.ToLower(strings.TrimSpace(query)); q != "" {
-		list = slices.DeleteFunc(list, func(cv proto.Conversation) bool {
-			for _, w := range strings.Fields(q) {
-				if !strings.Contains(strings.ToLower(cv.Name+" "+cv.Title+" "+cv.Dir+" "+cv.Agent+" "+cv.ID), w) {
-					return true
-				}
-			}
-			return false
-		})
-	}
-	return list, nil
-}
-
-// findConversation finds a conversation by its id, a unique prefix of
-// it, or its name.
-func findConversation(list []proto.Conversation, ref string) (proto.Conversation, error) {
-	var found []proto.Conversation
-	for _, cv := range list {
-		if cv.ID == ref {
-			return cv, nil
-		}
-		if strings.HasPrefix(cv.ID, ref) || strings.EqualFold(cv.Label(), ref) {
-			found = append(found, cv)
-		}
-	}
-	switch len(found) {
-	case 0:
-		return proto.Conversation{}, fmt.Errorf("%w: no conversation %q (see kero history)", errNotFound, ref)
-	case 1:
-		return found[0], nil
-	}
-	return proto.Conversation{}, fmt.Errorf("%q could be %d conversations: give more of its id (see kero history)", ref, len(found))
-}
-
-func listConversations(st proto.State, list []proto.Conversation) {
-	if len(list) == 0 {
-		fmt.Println("no conversations yet (agents' conversations show here once Kero's skill is set up: kero skill setup)")
-		return
-	}
-	names := map[string]string{}
-	for _, p := range st.Projects {
-		names[p.ID] = p.Name
-	}
-	now := time.Now()
-	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tAGENT\tPROJECT\tNAME\tLAST RAN\tDIR")
-	for _, cv := range list {
-		when := proto.Ago(cv.Updated, now)
-		if cv.Session != "" {
-			when = "running in " + cv.Session
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", cv.ID, cv.Agent, orDash(names[cv.Project]), cv.Label(), when, proto.ShortDir(cv.Dir))
-	}
-	w.Flush()
-}
-
 func listSessions(st proto.State) {
 	if len(st.Sessions) == 0 {
 		fmt.Println("no sessions (start one with kero new)")
@@ -1412,8 +1244,8 @@ func report(args []string) error {
 		_, err = tty.WriteString(seq)
 		return err
 	}
-	// No terminal, as under an agent's shell tool, which captures the
-	// output: in Kero, kerod takes the report for the pane instead.
+	// No terminal, as under a program that captures the output: in Kero,
+	// kerod takes the report for the pane instead.
 	if pane := current(); pane != "" && !term.IsTerminal(int(os.Stdout.Fd())) {
 		c, err := client.Connect(true)
 		if err != nil {

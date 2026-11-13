@@ -1,14 +1,12 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 
-	"kero/internal/detect"
 	"kero/internal/settings"
 )
 
@@ -42,24 +40,8 @@ func configCmd(args []string) error {
 		for _, p := range problems {
 			fmt.Println(p)
 		}
-		// The user's agents, which kerod reads as it starts.
-		file := settings.AgentsPath()
-		agents, bad := detect.Check(file)
-		if len(agents) > 0 {
-			fmt.Printf("ok: %s (%s)\n", file, strings.Join(agents, ", "))
-		}
-		for _, p := range bad {
-			fmt.Println(p)
-		}
-		var errs []string
 		if len(problems) > 0 {
-			errs = append(errs, fmt.Sprintf("%d problem(s) in %s", len(problems), settings.Path()))
-		}
-		if len(bad) > 0 {
-			errs = append(errs, fmt.Sprintf("%d problem(s) in %s", len(bad), file))
-		}
-		if len(errs) > 0 {
-			return errors.New(strings.Join(errs, "; "))
+			return fmt.Errorf("%d problem(s) in %s", len(problems), settings.Path())
 		}
 		return nil
 	case "edit":

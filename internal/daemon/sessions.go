@@ -16,7 +16,6 @@ import (
 // guards its fields.
 type session struct {
 	id, project, name string
-	agentNamed        bool // name is an agent's (proto.Session.AgentNamed)
 	created           int64
 	restored          bool
 	panes             []*pane
@@ -39,8 +38,6 @@ func (d *Daemon) stateLocked() proto.State {
 		Sessions: make([]proto.Session, 0, len(d.sessions)),
 		Viewed:   d.viewedID(),
 		Started:  d.started.UnixMilli(),
-		// The conversations' lock comes after d.mu.
-		Conversations: d.convs.generation(),
 	}
 	for _, s := range d.sessions {
 		st.Sessions = append(st.Sessions, d.sessionInfo(s))
@@ -51,7 +48,7 @@ func (d *Daemon) stateLocked() proto.State {
 // sessionInfo describes a session; d.mu is held.
 func (d *Daemon) sessionInfo(s *session) proto.Session {
 	info := proto.Session{
-		ID: s.id, Project: s.project, Name: s.name, AgentNamed: s.agentNamed,
+		ID: s.id, Project: s.project, Name: s.name,
 		Layout: s.layout.Clone(), Focus: s.focus, Zoomed: s.zoomed, Worktree: s.worktree,
 		Panes: make([]proto.Pane, 0, len(s.panes)),
 	}
@@ -144,68 +141,6 @@ func (d *Daemon) findPane(ref string) *pane {
 		return focusedLocked(s)
 	}
 	return nil
-}
-
-// agentPane finds the pane an agent's hook tells of, from the hook's
-// process pid: the pane whose shell runs it. An agent's service that
-// panes share, as Codex's app server, runs its hooks with the
-// environment of the pane that started it, and under that pane's shell
-// when it started it, which names no pane to trust: then the pane is
-// the one that can only be the agent's, its only pane yet to tell a
-// session (or, of several, the only one in the agent's dir), else its
-// only pane; away tells it.
-func (d *Daemon) agentPane(pid int, agent, dir string) (found *pane, away bool) {
-	d.mu.Lock()
-	panes := make([]*pane, 0, len(d.panes))
-	for _, p := range d.panes {
-		panes = append(panes, p)
-	}
-	d.mu.Unlock()
-	byShell := make(map[int]*pane, len(panes))
-	var running, pending, inDir []*pane
-	for _, p := range panes {
-		p.mu.Lock()
-		if p.info.Status != proto.Exited {
-			if p.shellPID > 0 {
-				byShell[p.shellPID] = p
-			}
-			if p.info.Agent == agent {
-				running = append(running, p)
-				if p.info.AgentSession == nil {
-					pending = append(pending, p)
-					if dir != "" && p.info.WorkDir() == dir {
-						inDir = append(inDir, p)
-					}
-				}
-			}
-		}
-		p.mu.Unlock()
-	}
-	for i := 0; i < 64 && pid > 1 && !sharedService(pid); i++ {
-		if p := byShell[pid]; p != nil {
-			return p, false
-		}
-		pid = procParent(pid)
-	}
-	switch {
-	case len(pending) == 1:
-		return pending[0], true
-	case len(pending) > 1:
-		if len(inDir) == 1 {
-			return inDir[0], true
-		}
-	case len(running) == 1:
-		return running[0], true
-	}
-	return nil, true
-}
-
-// sharedService tells a process of an agent's service that panes share:
-// Codex's app server as the daemon its TUIs connect to (daemon_auto_start),
-// which the first pane to run Codex starts, and runs every pane's hooks.
-func sharedService(pid int) bool {
-	args := procArgs(pid)
-	return slices.Contains(args, "app-server") && slices.Contains(args, "--managed-daemon")
 }
 
 // focusedLocked returns a session's focused pane, else its first; d.mu is

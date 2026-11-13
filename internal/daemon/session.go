@@ -13,15 +13,9 @@ import (
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
-	"kero/internal/detect"
 	"kero/internal/proto"
 	"kero/internal/settings"
 )
-
-// idleHold: an agent's screen that stops showing work, without showing
-// its prompt either, is idle once it has stayed so this long: a turn's
-// spinner line can go between two redraws.
-const idleHold = 700 * time.Millisecond
 
 // pane is a shell the daemon keeps running in a pseudo-terminal, with a
 // terminal emulator of its own (libghostty-vt, headless) that keeps its
@@ -52,22 +46,19 @@ type pane struct {
 	cwdAt    time.Time
 
 	dirty bool // output since the history on disk
-	// seen is what the screen showed when the status last came from it,
-	// which a status of other origin (a notification, the user's input)
-	// then stands against until the screen shows something else; looked
-	// tells that the screen was read since it last changed; idleFrom
-	// holds back working going idle (idleHold).
-	seen     detect.State
-	looked   bool
-	idleFrom time.Time
-	// osc finds OSC 7501, 133 and 9;4 in the output; records are the
+	// seen is what the title showed when the status last came from it
+	// (titleWorking or titleIdle), which a status of other origin (a
+	// notification, the user's input) then stands against until the
+	// title shows something else; looked tells that the title was read
+	// since it last changed.
+	seen   string
+	looked bool
+	// osc finds OSC 7501 and 133 in the output; records are the
 	// programs' status reports (OSC 7501), by id, and reported tells that
-	// one came; progress is the last OSC 9;4 after "9;", as "4;1;40",
-	// which only agents' rules read.
+	// one came.
 	osc      oscScanner
 	records  map[string]proto.Record
 	reported bool
-	progress string
 	// awaiting tells that the command the pane started with runs, whose
 	// end its shell will tell (OSC 133;D, see shellArgs).
 	awaiting bool
@@ -233,24 +224,14 @@ func (s *pane) onTitle(title string) {
 
 // onNotify takes a program's desktop notification (OSC 9, 777, 99),
 // which tells nothing of its status: a program that needs the user says
-// so with "kero report blocked" or "kero notify". An agent's screen tells
-// whether it waits, and its notification only words the wait, as Claude
-// Code's "needs your permission"; its "waiting for your input", a while
-// after a turn, is dropped. Any other program's goes on to the app as it
-// is. s.mu is held.
+// so with "kero report blocked" or "kero notify". It goes on to the app
+// as it is. s.mu is held.
 func (s *pane) onNotify(title, body string) {
 	title, body = strings.TrimSpace(title), strings.TrimSpace(body)
 	if body == "" {
 		title, body = "", title
 	}
 	if body == "" {
-		return
-	}
-	if detect.Known(s.info.Agent) {
-		if s.info.Status == proto.Waiting {
-			s.info.Message = body
-			s.d.changed()
-		}
 		return
 	}
 	go s.d.notice(proto.Notice{Session: s.sid, Pane: s.info.ID, Title: title, Body: body})
@@ -288,12 +269,6 @@ func (s *pane) setStatus(st proto.Status) {
 	if s.info.Status == st {
 		return
 	}
-	// An agent going to work from idle starts a turn, which a snapshot of
-	// its worktree marks; one going on after the user answered it, from
-	// waiting, goes on with its turn.
-	if st == proto.Working && (s.info.Status == proto.Idle || s.info.Status == proto.Failed) && s.info.Agent != "" {
-		go s.d.git.snapshot(s, s.info.WorkDir(), time.Now())
-	}
 	s.info.Status = st
 	s.info.Since = time.Now().UnixMilli()
 	s.wake()
@@ -317,40 +292,23 @@ func (s *pane) tick(now time.Time) bool {
 	changed := false
 	pg := s.proc.Foreground()
 	s.fgPGID = pg
-	proc, agent, runtime := "", "", ""
+	proc, runtime := "", ""
 	if pg != 0 && pg != s.shellPID {
 		proc = procName(pg)
-		args := procArgs(pg)
-		agent = detectAgent(proc, args)
 		if proc == "node" || proc == "bun" || proc == "python" || proc == "python3" || proc == "deno" {
-			// A script: name it by the script, as "codex", not "node".
-			if len(args) > 1 {
+			// A script: name it by the script, as "vite", not "node".
+			if args := procArgs(pg); len(args) > 1 {
 				runtime = strings.TrimSuffix(proc, "3")
 				proc = strings.TrimSuffix(filepath.Base(args[1]), filepath.Ext(args[1]))
 			}
 		}
-		if agent != "" {
-			proc = agent
-		}
 	}
 	if proc == "" && s.info.Process != "" {
-		// The program ended: its live reports go with it, and an agent's
-		// session is no more to resume.
+		// The program ended: its live reports go with it.
 		s.dropLive()
-		s.progress = ""
-		if s.info.AgentSession != nil {
-			s.d.noteEnded(s)
-			s.info.AgentSession = nil
-			s.d.save()
-		}
 	}
-	if proc != s.info.Process || agent != s.info.Agent || runtime != s.info.Runtime {
-		if s.info.Agent != "" && agent != s.info.Agent {
-			// Another agent starts from no progress; the first keeps what
-			// it showed before it was told.
-			s.progress = ""
-		}
-		s.info.Process, s.info.Agent, s.info.Runtime = proc, agent, runtime
+	if proc != s.info.Process || runtime != s.info.Runtime {
+		s.info.Process, s.info.Runtime = proc, runtime
 		s.seen, s.looked = "", false
 		changed = true
 	}
@@ -362,8 +320,8 @@ func (s *pane) tick(now time.Time) bool {
 			s.d.save()
 			s.d.git.poke(dir)
 		}
-		// The program's own, from its group's leader, as an agent's that
-		// went into a worktree: the shell under it stays where it was.
+		// The program's own, from its group's leader, as one's that went
+		// into a worktree: the shell under it stays where it was.
 		pdir := ""
 		if proc != "" {
 			pdir = procCwd(pg)
@@ -377,77 +335,54 @@ func (s *pane) tick(now time.Time) bool {
 			s.d.git.poke(s.info.WorkDir())
 		}
 	}
-	if s.look(now) {
+	if s.look() {
 		changed = true
 	}
 	return changed
 }
 
-// look sets the status from what the screen shows, when it may have
-// changed: an agent's from its rules (package detect), any other
-// program's from its title, which turns as a spinner while it works. Only
-// a change of what shows changes the status, so that a redraw changes
-// nothing, as one after a resize; s.mu is held.
-func (s *pane) look(now time.Time) bool {
+// What the title showed when the status last came from it (pane.seen).
+const (
+	titleWorking = "working"
+	titleIdle    = "idle"
+)
+
+// look sets the status from the program's title, which turns as a
+// spinner while it works, when it may have changed. Only a change of what
+// shows changes the status, so that a redraw changes nothing, as one
+// after a resize; s.mu is held.
+func (s *pane) look() bool {
 	if s.declared() {
-		// What the program declares stands; once it ends, the screen
+		// What the program declares stands; once it ends, the title
 		// tells again.
 		s.seen = ""
 		return false
 	}
-	if s.looked && s.idleFrom.IsZero() || s.info.Status == proto.Exited {
+	if s.looked || s.info.Status == proto.Exited {
 		return false
 	}
 	s.looked = true
-	st, visible := detect.Idle, true
-	if detect.Known(s.info.Agent) {
-		r := detect.Detect(s.info.Agent, detect.Input{Screen: s.screen(), Title: s.info.Title, Progress: s.progress})
-		if r.Skip {
-			return false
-		}
-		st, visible = r.State, r.Visible
-	} else if proto.TitleBusy(s.info.Title) {
-		st = detect.Working
+	st := titleIdle
+	if proto.TitleBusy(s.info.Title) {
+		st = titleWorking
 	}
 	if st == s.seen {
-		s.idleFrom = time.Time{}
 		return false
 	}
-	if st == detect.Idle && !visible && s.info.Status == proto.Working {
-		if s.idleFrom.IsZero() {
-			s.idleFrom = now
-		}
-		if now.Sub(s.idleFrom) < idleHold {
-			return false
-		}
-	}
-	s.idleFrom = time.Time{}
 	s.seen = st
 	before := s.info.Status
-	switch st {
-	case detect.Working:
+	switch {
+	case st == titleWorking:
 		s.setStatus(proto.Working)
 		s.info.Message = ""
-	case detect.Blocked:
-		s.needsUser("")
-	default:
-		if before == proto.Working || before == proto.Waiting {
-			s.setStatus(proto.Idle)
-			s.info.Message = ""
-			if before == proto.Working && !s.viewed() {
-				s.info.Unread = true
-			}
+	case before == proto.Working || before == proto.Waiting:
+		s.setStatus(proto.Idle)
+		s.info.Message = ""
+		if before == proto.Working && !s.viewed() {
+			s.info.Unread = true
 		}
 	}
 	return s.info.Status != before
-}
-
-// screen returns the text of the screen: the last rows of the terminal's
-// text; s.mu is held.
-func (s *pane) screen() string {
-	text := strings.TrimRight(s.term.Text(), "\n")
-	lines := strings.Split(text, "\n")
-	return strings.Join(lines[max(0, len(lines)-s.info.Rows):], "\n") + "\n"
 }
 
 // input writes what the user typed to the program.
@@ -458,9 +393,8 @@ func (s *pane) input(p []byte) {
 	if len(s.records) > 0 {
 		s.dismissFinished()
 	}
-	// Waiting is over once the user acts, unless the screen still asks,
-	// as a permission dialog does until it is answered.
-	if s.info.Status == proto.Waiting && !s.declared() && s.seen != detect.Blocked || s.info.Status == proto.Failed {
+	// Waiting is over once the user acts, unless the program declared it.
+	if s.info.Status == proto.Waiting && !s.declared() || s.info.Status == proto.Failed {
 		s.setStatus(proto.Idle)
 		s.info.Message = ""
 		changed = true
@@ -699,7 +633,7 @@ func (s *pane) exited(proc *ptyProc) {
 	s.proc = nil
 	s.dropLive()
 	s.info.ExitCode = code
-	s.info.Process, s.info.Agent, s.info.Runtime, s.info.PID = "", "", "", 0
+	s.info.Process, s.info.Runtime, s.info.PID = "", "", 0
 	if code == 0 {
 		s.mu.Unlock()
 		s.d.removePane(s.info.ID)
@@ -744,7 +678,6 @@ func (s *pane) close() {
 		return
 	}
 	s.closed = true
-	s.d.noteEnded(s)
 	close(s.changed) // wakes those waiting on it
 	s.changed = make(chan struct{})
 	proc := s.proc

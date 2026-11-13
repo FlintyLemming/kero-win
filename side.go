@@ -20,7 +20,7 @@ import (
 
 // The right sidebar stands at the window's right edge, on its wash as the
 // left sidebar does, with what the session's worktree is about, in tabs:
-// Changes, the files the session's agent or the user changed, in their
+// Changes, the files changed in the session's worktree, in their
 // folders; Files, the worktree's tree (files.go). A file chosen in either
 // opens in the viewer, a card beside the panes: Changes' as the diffs of
 // them all, one after the other, scrolled to it; Files' as its text.
@@ -78,7 +78,7 @@ type sideView struct {
 // changesState is the Changes tab's: the files changed since a base,
 // each with its diff, one after the other in one scroll.
 type changesState struct {
-	base string // the base chosen: git.BaseTurn, BaseHead or BaseBranch
+	base string // the base chosen: git.BaseHead or BaseBranch
 	// scope is the pane and base the list is of, and stamp what of its
 	// worktree it was fetched at; busy while a fetch is under way.
 	scope   string
@@ -434,24 +434,10 @@ func (a *App) showRightButton(c *ui.Context, pal *palette) {
 
 // --- the Changes tab ---
 
-// changesPanes returns the panes the Changes tab is of: the one the user
-// is in, whose worktree it shows, and the one of the session whose agent
-// last started a turn, the user's first, nil for none.
-func (a *App) changesPanes(s *proto.Session) (here, turn *proto.Pane) {
-	here = withGit(s, s.PaneByID(a.focusOf(s)))
-	if here == nil {
-		return nil, nil
-	}
-	if here.Turn != nil {
-		return here, here
-	}
-	for i := range s.Panes {
-		p := &s.Panes[i]
-		if p.Turn != nil && (turn == nil || p.Turn.At > turn.Turn.At) {
-			turn = p
-		}
-	}
-	return here, turn
+// changesPane returns the pane the Changes tab is of: the one the user is
+// in, whose worktree it shows; nil for none.
+func (a *App) changesPane(s *proto.Session) *proto.Pane {
+	return withGit(s, s.PaneByID(a.focusOf(s)))
 }
 
 // withGit is a pane with its worktree, as kerod last told it; for one it
@@ -486,26 +472,19 @@ func withinDir(dir, root string) bool {
 	return strings.HasPrefix(dir, root+"/") || strings.HasPrefix(dir, root+`\`)
 }
 
-// changesDir is the worktree the Changes tab lists: the agent's where it
-// shows its turn, else the one of the pane the user is in; "" for none.
+// changesDir is the worktree the Changes tab lists: the one of the pane
+// the user is in; "" for none.
 func (a *App) changesDir(s *proto.Session) string {
-	here, turn := a.changesPanes(s)
-	switch {
-	case turn != nil && (a.side.changes.base == git.BaseTurn || here.Git == nil):
-		return turn.Turn.Root
-	case here != nil && here.Git != nil:
+	if here := a.changesPane(s); here != nil && here.Git != nil {
 		return here.Git.Root
 	}
 	return ""
 }
 
 // changesScope names what the Changes tab lists for a pane since a base:
-// its worktree's changes, or its turn's, which the list, its files'
-// diffs, folds and scroll position are kept by.
+// its worktree's changes, which the list, its files' diffs, folds and
+// scroll position are kept by.
 func changesScope(p *proto.Pane, base string) string {
-	if base == git.BaseTurn && p.Turn != nil {
-		return p.Turn.Root + "|" + p.Turn.Tree + "|" + base
-	}
 	if p.Git != nil {
 		return p.Git.Root + "|" + base
 	}
@@ -520,7 +499,7 @@ func gitStamp(g *proto.GitInfo) string {
 	return fmt.Sprint(g.Root, g.Head, g.Branch, g.Files, g.Added, g.Removed)
 }
 
-// sessionWorking tells that an agent of the session works.
+// sessionWorking tells that a pane of the session works.
 func sessionWorking(s *proto.Session) bool {
 	for _, p := range s.Panes {
 		if p.Status == proto.Working {
@@ -535,7 +514,7 @@ func sessionWorking(s *proto.Session) bool {
 type changesFrame struct {
 	title, detail       string // why it lists nothing: git is off, no repository
 	bases, labels, tips []string
-	pane                *proto.Pane // whose worktree, or turn, it lists
+	pane                *proto.Pane // whose worktree it lists
 	scope               string
 	list                *proto.GitChanges // nil until one comes
 	held                bool              // list is another base's, faded for a moment
@@ -556,45 +535,32 @@ func (a *App) changesFrameOf(c *ui.Context, s *proto.Session) *changesFrame {
 	cf := &changesFrame{}
 	a.side.cf = cf
 	ch := &a.side.changes
-	here, turn := a.changesPanes(s)
+	here := a.changesPane(s)
 	if !a.set.GitStatus {
 		cf.title, cf.detail = locales.ChangesGitOff(), locales.ChangesGitOffDetail()
 		return cf
 	}
-	if here == nil || here.Git == nil && turn == nil {
+	if here == nil || here.Git == nil {
 		cf.title, cf.detail = locales.ChangesNoRepo(), locales.ChangesNoRepoDetail()
 		return cf
 	}
 
-	// The bases this worktree offers, and the one shown: the agent's turn
-	// first, as the tab opens.
-	if turn != nil {
-		cf.bases, cf.labels, cf.tips = append(cf.bases, git.BaseTurn), append(cf.labels, locales.ChangesTurn()), append(cf.tips, locales.ChangesTurnTip())
-	}
-	if here.Git != nil {
-		cf.bases, cf.labels, cf.tips = append(cf.bases, git.BaseHead), append(cf.labels, locales.ChangesUncommitted()), append(cf.tips, locales.ChangesUncommittedTip())
-		if d := here.Git.Default; d != "" {
-			cf.bases, cf.labels, cf.tips = append(cf.bases, git.BaseBranch), append(cf.labels, locales.ChangesBranch()), append(cf.tips, locales.ChangesBranchTip(d))
-		}
+	// The bases this worktree offers, and the one shown.
+	cf.bases, cf.labels, cf.tips = append(cf.bases, git.BaseHead), append(cf.labels, locales.ChangesUncommitted()), append(cf.tips, locales.ChangesUncommittedTip())
+	if d := here.Git.Default; d != "" {
+		cf.bases, cf.labels, cf.tips = append(cf.bases, git.BaseBranch), append(cf.labels, locales.ChangesBranch()), append(cf.tips, locales.ChangesBranchTip(d))
 	}
 	if !slices.Contains(cf.bases, ch.base) {
 		ch.base = cf.bases[0]
 	}
 	pane := here
-	if ch.base == git.BaseTurn {
-		pane = turn
-	}
 	// The list is of a worktree, not of a pane: the panes the user moves
-	// between in one show it as it was, scrolled where it was. A turn's is
-	// of its snapshot.
+	// between in one show it as it was, scrolled where it was.
 	scope := changesScope(pane, ch.base)
 	stamp := gitStamp(pane.Git)
-	if pane.Turn != nil && ch.base == git.BaseTurn {
-		stamp += "|" + pane.Turn.Tree
-	}
 	working := sessionWorking(s)
 	// The list follows the worktree: as its status changes, and every few
-	// seconds while an agent works in the session, as a file can change
+	// seconds while a program works in the session, as a file can change
 	// without its count of lines.
 	stale := scope != ch.scope || stamp != ch.stamp || working && time.Since(ch.fetched) > 5*time.Second
 	if stale && !ch.busy && a.hostOf(pane.ID).cl != nil {
@@ -644,7 +610,7 @@ func (a *App) changesNone(c *ui.Context, pal *palette, cf *changesFrame) bool {
 	case len(res.Files) == 0 && cf.held:
 		// Another base's "no changes" would say the wrong thing.
 	case len(res.Files) == 0:
-		detail := map[string]string{git.BaseTurn: locales.ChangesNoneTurn(), git.BaseHead: locales.ChangesNoneUncommitted()}[a.side.changes.base]
+		detail := locales.ChangesNoneUncommitted()
 		if a.side.changes.base == git.BaseBranch {
 			detail = locales.ChangesNoneBranch(res.BaseName)
 		}
@@ -859,7 +825,7 @@ func (a *App) syncFiles(c *ui.Context, scope string, pane *proto.Pane, root stri
 		switch {
 		case sf.d == nil && !sf.text.Binary && !sf.text.Large && sf.err == "":
 			known = "" // never shown
-		case sf.stamp != stamp && sf.base != git.BaseTurn:
+		case sf.stamp != stamp:
 			known = "" // HEAD moved: the base's text too
 		case sf.f != f:
 		default:
@@ -950,7 +916,7 @@ func (a *App) fileDiff(c *ui.Context, pal *palette, s *proto.Session, scope stri
 		case sf.d == nil:
 			ui.Column(c.Key("loading")).Height(48).Center().Children(func() { ui.Spinner(c) })
 		default:
-			a.diffOptions(c, pal, s, sf, width)
+			a.diffOptions(c, pal, sf, width)
 			diff := editor.DiffView(c.Key("diff"), sf.d)
 			if diff.FocusWithin() {
 				ch.focus = sf
@@ -1224,10 +1190,8 @@ func (a *App) diffSplit(width float32) bool {
 }
 
 // diffOptions sets a file's diff's looks and actions for this frame: its
-// new side edits (edits.go), and in a turn, while no agent of the session
-// works, Revert and Keep show on each change, as the user reviews what
-// the agent did.
-func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sideFile, width float32) {
+// new side edits (edits.go).
+func (a *App) diffOptions(c *ui.Context, pal *palette, sf *sideFile, width float32) {
 	d := sf.d
 	d.FitContent = true
 	d.Wrap = a.set.WrapLines
@@ -1237,23 +1201,9 @@ func (a *App) diffOptions(c *ui.Context, pal *palette, s *proto.Session, sf *sid
 	if a.diffSplit(width) {
 		d.Layout = editor.DiffSplit
 	}
-	working := sessionWorking(s)
 	// The new side, the file now, edits.
 	d.Editable = !sf.patch && !sf.writing && sf.f.Status != "deleted"
 	d.RenderSeparator = func(c *ui.Context, sep ui.Element, s *editor.DiffSeparator) { a.separator(c, pal, sep, s) }
-	d.HunkActions = sf.base == git.BaseTurn && !sf.patch && !working && !sf.writing
-	d.RenderHunkActions = func(c *ui.Context, bar ui.Element, h *editor.DiffHunkActions) {
-		floating(bar.Gap(2).Padding(3).Radius(8).Background(pal.popover).AlignItems(ui.Center), pal)
-		bar.Children(func() {
-			if hunkButton(c, "revert", revertIcon, locales.ChangesRevert(), locales.ChangesRevertTip(), pal) {
-				h.Revert()
-				a.writeBack(sf)
-			}
-			if hunkButton(c, "keep", checkIcon, locales.ChangesKeep(), locales.ChangesKeepTip(), pal) {
-				h.Keep()
-			}
-		})
-	}
 }
 
 // separator is a diff's unchanged lines collapsed between its changes:
@@ -1312,48 +1262,4 @@ func (a *App) separator(c *ui.Context, pal *palette, sep ui.Element, s *editor.D
 			}
 		})
 	})
-}
-
-// hunkButton is a small button of a change's actions, an icon and a
-// label.
-func hunkButton(c *ui.Context, key string, svg *ui.SVG, label, tip string, pal *palette) bool {
-	b := ui.ButtonBase(c.Key(key)).Height(24).Padding(0, 8).Gap(5).Radius(6).AlignItems(ui.Center).
-		TextColor(pal.textMuted).Label(label).Tooltip(tip)
-	if b.Hovered() || b.Pressed() {
-		b.Background(pal.rowHover).TextColor(pal.text)
-	}
-	b.Children(func() {
-		ui.Icon(c, svg).Size(13, 13)
-		ui.Text(c, label).FontSize(12).FontWeight(500).SingleLine()
-	})
-	return b.Clicked()
-}
-
-// writeBack writes a file's diff's new text, which a change reverted
-// changed, to the file, through kerod, which writes it only as the file
-// was shown: one changed meanwhile is shown anew instead.
-func (a *App) writeBack(sf *sideFile) {
-	cl := a.hostOf(sf.pane).cl
-	if cl == nil {
-		return
-	}
-	text, v := bufferText(sf.d.New), sf.d.New.Version()
-	sf.writing, sf.edits.saving = true, true
-	go func() {
-		var hash string
-		err := cl.Call("git.revert", proto.GitWriteParams{Pane: sf.pane, Base: sf.base, Path: sf.f.Path, Hash: sf.hash, Text: text}, &hash)
-		a.update(func() {
-			sf.writing, sf.edits.saving = false, false
-			if err != nil {
-				a.toast(locales.ChangesRevertFailed(err.Error()))
-				sf.d.New.MarkSaved()
-				a.fetchFile(sf, "")
-				return
-			}
-			sf.hash = hash
-			if sf.d.New.Version() == v {
-				sf.d.New.MarkSaved()
-			}
-		})
-	}()
 }

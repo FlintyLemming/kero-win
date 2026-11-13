@@ -1,10 +1,10 @@
-// kero is a terminal for coding agents: sessions grouped by project in a
+// kero is a terminal: sessions grouped by project in a
 // sidebar that shows which work, which need you and which are done. The
 // sessions run in kerod, a daemon of their own, so quitting kero leaves
 // them running, and opening it again shows everything as it was.
 //
 // The same executable is the kero CLI (kero help), which drives sessions
-// from a shell or an agent, and kerod itself (kero __kerod).
+// from a shell or a script, and kerod itself (kero __kerod).
 package main
 
 import (
@@ -76,7 +76,6 @@ func runApp() {
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
 	}
-	cli.SyncSkill()
 	// Updates from Kero's GitHub releases, in a window of native UI.
 	mygo.Use(native.Plugin)
 	a := newApp()

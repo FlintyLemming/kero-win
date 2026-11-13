@@ -2,8 +2,8 @@
 // changes, trees of its working tree as it was (snapshots), and its files
 // changed since one. It runs the user's git, and writes nothing to a
 // repository's index or working tree: snapshots go through an index of
-// their own, and every command takes --no-optional-locks, so that an agent
-// committing never finds kero holding index.lock.
+// their own, and every command takes --no-optional-locks, so that a
+// program committing never finds kero holding index.lock.
 package git
 
 import (

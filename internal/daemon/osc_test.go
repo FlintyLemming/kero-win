@@ -19,7 +19,7 @@ func TestScannerAcrossReads(t *testing.T) {
 	for i := range len(stream) {
 		o.scan([]byte{stream[i]}, func(b []byte) { got = append(got, string(b)) }, func() { got = append(got, "RIS") })
 	}
-	want := []string{"7501;state=working:app=brew:msg=" + msg, "133;A", "9;4;1;40", "RIS"}
+	want := []string{"7501;state=working:app=brew:msg=" + msg, "133;A", "RIS"}
 	if strings.Join(got, "|") != strings.Join(want, "|") {
 		t.Fatalf("got %q, want %q", got, want)
 	}
@@ -90,9 +90,8 @@ func TestFullResetClearsRecords(t *testing.T) {
 }
 
 // Progress (OSC 9;4) is no work of itself, as Neovim's for its language
-// servers: only an agent's rules read it, as Kiro's, whose progress turns
-// while it works.
-func TestProgressOnlyForAgents(t *testing.T) {
+// servers.
+func TestProgressIsNoWork(t *testing.T) {
 	s := testPane(t)
 	now := time.Now()
 	s.output([]byte("\x1b[?1049h\x1b]9;4;1;40\x1b\\"))
@@ -103,26 +102,10 @@ func TestProgressOnlyForAgents(t *testing.T) {
 	if st := s.status(now); st != proto.Idle {
 		t.Fatalf("a command's progress: status %s", st)
 	}
-
-	s.info.Agent = "kiro-cli"
-	s.output([]byte("\x1b]9;4;3\x1b\\"))
-	if st := s.status(now); st != proto.Working {
-		t.Fatalf("Kiro's progress: status %s, want working", st)
-	}
-	s.output([]byte("\x1b]9;4;0;0\x1b\\"))
-	s.status(now)
-	if st := s.status(now.Add(time.Minute)); st != proto.Idle {
-		t.Fatalf("Kiro's progress cleared: status %s, want idle", st)
-	}
-
-	s.output([]byte("\x1b]9;4;3\x07\x1bc"))
-	if s.progress != "" {
-		t.Fatalf("after RIS: progress %q", s.progress)
-	}
 }
 
 // A report kerod takes for a pane, as kero report sends it with no
-// terminal to write to, as under an agent's shell tool, is the pane's as
+// terminal to write to, is the pane's as
 // one it wrote.
 func TestReportCall(t *testing.T) {
 	s := testPane(t)

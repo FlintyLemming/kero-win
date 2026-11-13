@@ -56,7 +56,6 @@ var (
 	treeIcon         = glyph("f7-list-bullet-indent")
 	collapseIcon     = glyph("f7-rectangle-compress-vertical")
 	expandIcon       = glyph("f7-rectangle-expand-vertical")
-	revertIcon       = glyph("f7-arrow-uturn-left")
 	openFileIcon     = glyph("f7-arrow-up-right-square")
 	globeIcon        = glyph("f7-globe")
 	chevronLeftIcon  = glyph("f7-chevron-left")
@@ -68,14 +67,11 @@ var (
 )
 
 // programIcons are the logos of programs a pane may run, by the name kerod
-// gives the foreground program, its agent or its script's runtime.
+// gives the foreground program or its script's runtime.
 var programIcons = map[string]*ui.SVG{}
 
 func init() {
 	for name, logo := range map[string]string{
-		"claude": "claude", "codex": "openai", "gemini": "googlegemini", "opencode": "opencode",
-		"amp": "amp", "cursor-agent": "cursor", "copilot": "githubcopilot", "qwen": "qwen",
-		"kimi": "kimi", "cline": "cline",
 		"node": "nodedotjs", "bun": "bun", "deno": "deno", "python": "python", "python3": "python",
 		"vim": "vim", "nvim": "neovim", "git": "git", "docker": "docker",
 	} {
@@ -83,15 +79,14 @@ func init() {
 	}
 }
 
-// programIcon is the logo of the pane's foreground program, as Claude's
-// for Claude Code and Node.js's for a script node runs; the terminal's
-// while the shell is in the foreground or the program has none; a globe
-// for a browser.
+// programIcon is the logo of the pane's foreground program, as Node.js's
+// for a script node runs; the terminal's while the shell is in the
+// foreground or the program has none; a globe for a browser.
 func programIcon(p *proto.Pane) *ui.SVG {
 	if p.Browser() {
 		return globeIcon
 	}
-	for _, name := range []string{p.Agent, p.Process, p.Runtime} {
+	for _, name := range []string{p.Process, p.Runtime} {
 		if i := programIcons[name]; i != nil {
 			return i
 		}
@@ -99,26 +94,13 @@ func programIcon(p *proto.Pane) *ui.SVG {
 	return terminalIcon
 }
 
-// agentColors are the colors of coding agents whose logos have one of
-// their own, as Claude's orange; the others take the text's.
-var agentColors = map[string]ui.Color{
-	"claude": ui.Hex("#d97757"),
-	"gemini": ui.Hex("#3186ff"),
-}
-
-// programColor is the color of a pane's program icon in the sidebar: a
-// coding agent's own while it runs, the text's for another program, and
-// faint once the shell is back in the foreground or the pane ended, as
-// the Ended list shows the agents that stopped.
+// programColor is the color of a pane's program icon in the sidebar: the
+// muted text's while a program runs, and faint once the shell is back in
+// the foreground or the pane ended.
 func programColor(pal *palette, p *proto.Pane) ui.Color {
 	switch {
 	case p.Status == proto.Exited:
 		return pal.textFaint
-	case p.Agent != "":
-		if col, ok := agentColors[p.Agent]; ok {
-			return col
-		}
-		return pal.text
 	case p.Process != "", p.Browser():
 		return pal.textMuted
 	}

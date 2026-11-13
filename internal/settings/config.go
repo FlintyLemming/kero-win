@@ -36,13 +36,6 @@ func ConfigPath() string {
 	return filepath.Join(base, proto.Name(), "config")
 }
 
-// AgentsPath returns the user's agents file, agents.toml, beside the
-// configuration file: the rules that tell what an agent is doing from its
-// screen (package detect), which the flat configuration can't hold.
-func AgentsPath() string {
-	return filepath.Join(filepath.Dir(ConfigPath()), "agents.toml")
-}
-
 // key is a key of the configuration: how it reads and writes a setting.
 type key struct {
 	name string
@@ -144,7 +137,7 @@ func IsFolderPath(p string) bool {
 // `kero config show` list them.
 var keys = []key{
 	newSessionDirKey,
-	choiceKey("session-name", "what names a session you or an agent didn't: the program in the pane you're in, else in the one that most needs you; the program in the one that most needs you; or the first pane's folder",
+	choiceKey("session-name", "what names a session you didn't: the program in the pane you're in, else in the one that most needs you; the program in the one that most needs you; or the first pane's folder",
 		func(s *Settings) *string { return &s.SessionName }, proto.NameFocused, proto.NameLead, proto.NameFolder),
 	choiceKey("sidebar-rows", "how the sidebar shows a session: detailed, with its status message, else its branch and changes, on a second line; or compact, on one line",
 		func(s *Settings) *string { return &s.SidebarRows }, "detailed", "compact"),
@@ -152,11 +145,9 @@ var keys = []key{
 	boolKey("focus-follows-mouse", "focus the pane the pointer moves into", func(s *Settings) *bool { return &s.FocusFollowsMouse }),
 	boolKey("confirm-close", "ask before closing a pane a program runs in", func(s *Settings) *bool { return &s.ConfirmClose }),
 	boolKey("restore-sessions", "start sessions again after kerod restarts, as after a reboot", func(s *Settings) *bool { return &s.RestoreSessions }),
-	boolKey("resume-agents", "as sessions start again, resume the conversation of the coding agent each pane ran", func(s *Settings) *bool { return &s.ResumeAgents }),
-	boolKey("session-history", "list the coding agents' ended conversations in the sidebar, to resume or archive", func(s *Settings) *bool { return &s.SessionHistory }),
 	choiceKey("macos-show-app-icon", "where Kero's icon shows; closing the window keeps Kero running in the menu bar while it shows there. Windows and Linux always show it in the notification area",
 		func(s *Settings) *string { return &s.AppIcon }, AppIcons...),
-	choiceKey("keep-computer-awake", "keep this computer from sleeping: never; as long as Kero runs; or while an agent on it works. Closing a Mac's lid still sleeps it",
+	choiceKey("keep-computer-awake", "keep this computer from sleeping: never; as long as Kero runs; or while a program on it works. Closing a Mac's lid still sleeps it",
 		func(s *Settings) *string { return &s.KeepAwake }, KeepAwakeModes...),
 
 	choiceKey("window-theme", "the app's appearance", func(s *Settings) *string { return &s.Appearance }, "system", "light", "dark"),
@@ -287,7 +278,7 @@ var keys = []key{
 	numberKey("scrollback-limit", "the output each pane keeps, in megabytes; 0 for none", func(s *Settings) float64 { return float64(s.Scrollback) }, func(s *Settings, n float64) { s.Scrollback = int(n) }),
 
 	boolKey("notify-on-waiting", "when a session needs you", func(s *Settings) *bool { return &s.NotifyWaiting }),
-	boolKey("notify-on-done", "when an agent finishes", func(s *Settings) *bool { return &s.NotifyDone }),
+	boolKey("notify-on-done", "when a program reports it finished", func(s *Settings) *bool { return &s.NotifyDone }),
 	boolKey("notify-on-error", "when a program reports it failed", func(s *Settings) *bool { return &s.NotifyFailed }),
 	boolKey("notify-sound", "", func(s *Settings) *bool { return &s.NotifySound }),
 	boolKey("dock-badge", "the number of sessions that need you", func(s *Settings) *bool { return &s.DockBadge }),

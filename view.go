@@ -348,9 +348,6 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 				gi++
 			}
 		}
-		if a.set.SessionHistory {
-			a.endedSections(c, pal)
-		}
 	})
 	a.sidebarFooter(c, pal)
 	c.After(20 * time.Second) // times ago move on
@@ -645,7 +642,7 @@ func (a *App) sessionRow(c *ui.Context, pal *palette, s *proto.Session, n *int) 
 			})
 		} else {
 			name()
-			// A branch of its own, as an agent's in a worktree, by the name.
+			// A branch of its own, as one's in a worktree, by the name.
 			if b := offBranch(g); b != "" {
 				ui.Text(c, b).FontSize(12).TextColor(pal.textFaint).SingleLine().Ellipsis("…").Shrink(3).MinWidth(24).MaxWidth(120)
 			}
@@ -1132,11 +1129,6 @@ func (a *App) emptyState(c *ui.Context, pal *palette) {
 			if button(c, "empty-open", locales.ActionOpenProject(), a.keys("project.open"), false, pal) {
 				a.openProject()
 			}
-		})
-		ui.Column(c).Margin(40, 0, 0, 0).Padding(14, 16).Gap(6).Radius(10).Background(pal.chip).MaxWidth(420).Children(func() {
-			ui.Text(c, locales.EmptyForAgents()).FontSize(11.5).FontWeight(600).TextColor(pal.textMuted)
-			ui.Text(c, "kero new -n review -- claude\nkero prompt review \"run the tests and fix them\"\nkero wait review && kero read review").
-				Font("monospace").FontSize(12).TextColor(pal.text).LineHeight(1.5).Selectable()
 		})
 	})
 }

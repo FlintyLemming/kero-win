@@ -21,25 +21,16 @@ import (
 	"kero/internal/proto"
 )
 
-// Restore diagnostics must describe the actual shell fallback without exposing
-// command arguments, environment values, or the agent's conversation ID.
+// A restored pane starts its shell alone, not the command it ran, and the
+// log exposes neither command arguments nor environment values.
 func TestRestoreDiagnostics(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		agent   *proto.AgentSession
-		disable bool
 		browser bool
 		plain   bool
-		reason  string
-		command string
 	}{
-		{name: "unrecorded", reason: "no agent session recorded"},
-		{name: "ordinary shell", plain: true, reason: "no agent session recorded"},
-		{name: "ordinary shell with resumption disabled", plain: true, disable: true, reason: "no agent session recorded"},
-		{name: "unsupported", agent: &proto.AgentSession{Agent: "private-agent", ID: "private-session-42"}, reason: "unsupported agent"},
-		{name: "invalid ID", agent: &proto.AgentSession{Agent: "codex", ID: "private-session;42"}, reason: "invalid agent session ID"},
-		{name: "disabled", agent: &proto.AgentSession{Agent: "codex", ID: "private-session-42"}, disable: true, reason: "agent resumption disabled"},
-		{name: "resumed", agent: &proto.AgentSession{Agent: "codex", ID: "private-session-42"}, command: "codex resume private-session-42"},
+		{name: "with a command"},
+		{name: "ordinary shell", plain: true},
 		{name: "browser", browser: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -49,17 +40,17 @@ func TestRestoreDiagnostics(t *testing.T) {
 			argsPath := filepath.Join(d.dir, "args")
 			t.Setenv("KERO_TEST_ARGS", argsPath)
 			t.Setenv("KERO_TEST_PRIVATE", "private-environment-value")
-			// Capture the actual PTY argv without running an installed agent or
-			// loading the user's shell profile. The name sh selects POSIX argv.
+			// Capture the actual PTY argv without loading the user's shell
+			// profile. The name sh selects POSIX argv.
 			shell := filepath.Join(d.dir, "sh")
 			if err := os.WriteFile(shell, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$KERO_TEST_ARGS\"\nprintf 'END\\n' >> \"$KERO_TEST_ARGS\"\nexec /bin/cat\n"), 0o700); err != nil {
 				t.Fatal(err)
 			}
-			config := fmt.Sprintf("command = %s\nresume-agents = %t\n", shell, !tc.disable)
+			config := fmt.Sprintf("command = %s\n", shell)
 			if err := os.WriteFile(os.Getenv("KERO_CONFIG"), []byte(config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			sp := savedPane{ID: "pane", Dir: d.dir, Command: []string{"private-command-payload"}, Agent: tc.agent, Cols: 80, Rows: 24}
+			sp := savedPane{ID: "pane", Dir: d.dir, Command: []string{"private-command-payload"}, Cols: 80, Rows: 24}
 			if tc.plain {
 				sp.Command = nil
 			}
@@ -89,14 +80,7 @@ func TestRestoreDiagnostics(t *testing.T) {
 				}
 			})
 			gotLog := output.String()
-			if tc.reason != "" {
-				if want := "pane pane restored as shell: " + tc.reason; !strings.Contains(gotLog, want) {
-					t.Errorf("missing restoration reason %q in %q", want, gotLog)
-				}
-			} else if strings.Contains(gotLog, "restored as shell") {
-				t.Errorf("reported a shell fallback for %s: %s", tc.name, gotLog)
-			}
-			for _, private := range []string{"private-command-payload", "private-session", "private-agent", "private-environment-value", "private-page"} {
+			for _, private := range []string{"private-command-payload", "private-environment-value", "private-page"} {
 				if strings.Contains(gotLog, private) {
 					t.Errorf("log exposed %q: %s", private, gotLog)
 				}
@@ -107,15 +91,11 @@ func TestRestoreDiagnostics(t *testing.T) {
 				}
 				return
 			}
-			wantAgent := tc.agent
-			if tc.disable {
-				wantAgent = nil
-			}
 			p.mu.Lock()
-			unchanged := reflect.DeepEqual(p.info.Command, sp.Command) && reflect.DeepEqual(p.info.AgentSession, wantAgent)
+			unchanged := reflect.DeepEqual(p.info.Command, sp.Command)
 			p.mu.Unlock()
 			if !unchanged {
-				t.Error("restoration changed saved command or agent metadata")
+				t.Error("restoration changed the saved command")
 			}
 			var args string
 			for deadline := time.Now().Add(5 * time.Second); ; {
@@ -129,12 +109,8 @@ func TestRestoreDiagnostics(t *testing.T) {
 				}
 				time.Sleep(time.Millisecond)
 			}
-			if tc.command == "" {
-				if args != "\nEND\n" {
-					t.Errorf("shell fallback ran a command: %q", args)
-				}
-			} else if !strings.Contains(args, tc.command) {
-				t.Errorf("resume command missing from PTY argv: %q", args)
+			if args != "\nEND\n" {
+				t.Errorf("the restored shell ran a command: %q", args)
 			}
 		})
 	}

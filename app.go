@@ -58,10 +58,6 @@ type prefs struct {
 	SideTab    string  `json:"sideTab,omitempty"`
 	RightWidth float32 `json:"rightWidth,omitempty"`
 	SideWidth  float32 `json:"sideWidth,omitempty"`
-	// EndedOpen and ArchivedOpen tell the sidebar's sections of the
-	// agents' ended conversations unfolded (session-history).
-	EndedOpen    bool `json:"endedOpen,omitempty"`
-	ArchivedOpen bool `json:"archivedOpen,omitempty"`
 	// QuickSession is the session the quick terminal shows (quick.go).
 	QuickSession string `json:"quickSession,omitempty"`
 }
@@ -135,15 +131,10 @@ type App struct {
 	renameFrames int
 	chrome       chrome // where the sidebar's animation puts things
 
-	pal     paletteState
-	find    findState
-	confirm *confirmation
-	wtAsk   *worktreeAsk
-	// endedAll shows all of the sidebar's Ended; skillMissing tells, as
-	// of skillsAt, that no kind of agent has Kero's skill (ended.go).
-	endedAll     bool
-	skillMissing bool
-	skillsAt     time.Time
+	pal          paletteState
+	find         findState
+	confirm      *confirmation
+	wtAsk        *worktreeAsk
 	sideDrag     float32 // the width as a drag of the sidebar's edge began
 	pendingToast string
 	// later are actions that change what the view is building, run once
@@ -311,9 +302,6 @@ func (a *App) event(h *host, cl *client.Client, m proto.Message) {
 func (a *App) setState(h *host, st proto.State) {
 	first, hostFirst := !a.loaded, !h.loaded
 	h.loaded = true
-	if st.Conversations != h.convGen || hostFirst {
-		h.convGen, h.convKnown = st.Conversations, false
-	}
 	// A divider dragged keeps the ratios it set, which the daemon hears of
 	// only once it is let go.
 	var dragged *proto.Layout
@@ -400,11 +388,8 @@ func (a *App) notify(first bool) {
 			if body == "" {
 				body = locales.NotifyFailedBody(s.PaneName())
 			}
-		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && (s.Agent != "" || s.Message != ""):
+		case s.Status == proto.Idle && prev == proto.Working && s.Unread && a.set.NotifyDone && s.Message != "":
 			title, body = locales.NotifyDoneTitle(a.hostedName(s)), s.Message
-			if body == "" {
-				body = locales.NotifyDoneBody(s.Agent, a.hostOf(s.ID).shortDir(s.WorkDir()))
-			}
 		default:
 			continue
 		}
@@ -864,7 +849,7 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 		},
 		OpenLink: func(link string) bool { return a.openLink(id, link) },
 		// An image alone on the clipboard pastes as the path of a file
-		// with it, which agents take as an image they attach.
+		// with it, as dropping the file on the pane would.
 		OnPaste: func(d transfer.Data) bool { return a.pasteImage(id, d) },
 		// A selection copied as it ends shows nothing else: say so.
 		OnCopy: func(_ string, by terminal.CopySource) {

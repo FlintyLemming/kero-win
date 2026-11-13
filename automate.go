@@ -27,7 +27,7 @@ func (a *App) browse(h *host, r *proto.BrowserRequest, answer func(*proto.Browse
 		if h.remote() {
 			fail("Remote Control of %s is off: turn it on in Kero's Settings › Hosts", h.name)
 		} else {
-			fail("Remote Control is off: turn it on in Kero's Settings › Agents")
+			fail("Remote Control is off: turn it on in Kero's Settings › Command Line")
 		}
 		return
 	}

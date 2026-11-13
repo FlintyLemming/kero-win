@@ -81,15 +81,15 @@ func TestStatus(t *testing.T) {
 	}
 }
 
-func TestTurnChanges(t *testing.T) {
+func TestSnapshotChanges(t *testing.T) {
 	ctx := context.Background()
 	r := repo(t, map[string]string{"a.txt": "one\n", "keep.txt": "k\n"})
-	// Dirty before the turn: not the turn's change.
+	// Dirty before the snapshot: not a change since it.
 	write(t, filepath.Join(r.Root, "keep.txt"), "k2\n")
 	write(t, filepath.Join(r.Root, ".gitignore"), "ignored/\n")
 	index, _ := os.ReadFile(filepath.Join(r.GitDir, "index"))
 
-	turn, err := r.Snapshot(ctx)
+	snap, err := r.Snapshot(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,11 +100,7 @@ func TestTurnChanges(t *testing.T) {
 	write(t, filepath.Join(r.Root, "made.txt"), "m\n")
 	write(t, filepath.Join(r.Root, "ignored", "x.txt"), "x\n")
 
-	rev, _, err := r.Base(ctx, BaseTurn, turn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := r.Changes(ctx, rev, "")
+	files, err := r.Changes(ctx, snap, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,11 +109,11 @@ func TestTurnChanges(t *testing.T) {
 		got[f.Path] = f
 	}
 	if len(got) != 2 || got["a.txt"].Status != "modified" || got["a.txt"].Added != 1 || got["made.txt"].Status != "added" {
-		t.Errorf("turn changes %+v; want a.txt modified +1 and made.txt added", files)
+		t.Errorf("changes since the snapshot %+v; want a.txt modified +1 and made.txt added", files)
 	}
 
 	// Since HEAD: keep.txt and .gitignore too.
-	rev, name, err := r.Base(ctx, BaseHead, "")
+	rev, name, err := r.Base(ctx, BaseHead)
 	if err != nil || name != "HEAD" {
 		t.Fatal(name, err)
 	}
@@ -129,24 +125,18 @@ func TestTurnChanges(t *testing.T) {
 		t.Errorf("changes since HEAD %+v; want 4", files)
 	}
 
-	txt, err := r.FileText(ctx, turn, "a.txt", "")
+	txt, err := r.FileText(ctx, snap, "a.txt", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if txt.Old != "one\n" || txt.New != "one\ntwo\n" || txt.Binary || txt.Large {
 		t.Errorf("text %+v", txt)
 	}
-	if txt, _ := r.FileText(ctx, turn, "made.txt", ""); txt.Old != "" || txt.New != "m\n" {
+	if txt, _ := r.FileText(ctx, snap, "made.txt", ""); txt.Old != "" || txt.New != "m\n" {
 		t.Errorf("added file's text %+v", txt)
 	}
-	if patch, err := r.Patch(ctx, turn, "", "a.txt"); err != nil || !strings.Contains(patch, "+two") {
+	if patch, err := r.Patch(ctx, snap, "", "a.txt"); err != nil || !strings.Contains(patch, "+two") {
 		t.Errorf("patch %q, %v", patch, err)
-	}
-	if ok, err := r.Changed(ctx, turn, "a.txt"); !ok || err != nil {
-		t.Errorf("a.txt changed: %v, %v", ok, err)
-	}
-	if ok, err := r.Changed(ctx, turn, "keep.txt"); ok || err != nil {
-		t.Errorf("keep.txt changed in the turn: %v, %v", ok, err)
 	}
 }
 
@@ -157,7 +147,7 @@ func TestBranchBase(t *testing.T) {
 	write(t, filepath.Join(r.Root, "f.txt"), "f\n")
 	gitIn(t, r.Root, "add", "-A")
 	gitIn(t, r.Root, "commit", "-q", "-m", "feature")
-	rev, name, err := r.Base(ctx, BaseBranch, "")
+	rev, name, err := r.Base(ctx, BaseBranch)
 	if err != nil || name != "main" {
 		t.Fatal(name, err)
 	}
@@ -174,10 +164,10 @@ func TestWrite(t *testing.T) {
 	r := repo(t, map[string]string{"a.txt": "a\n"})
 	full := filepath.Join(r.Root, "a.txt")
 	os.Chmod(full, 0o755)
-	if err := r.Write("a.txt", Hash([]byte("not it")), "x\n"); err != ErrChanged {
+	if err := WriteFile(full, Hash([]byte("not it")), "x\n"); err != ErrChanged {
 		t.Errorf("a stale write: %v", err)
 	}
-	if err := r.Write("a.txt", Hash([]byte("a\n")), "b\n"); err != nil {
+	if err := WriteFile(full, Hash([]byte("a\n")), "b\n"); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(full)

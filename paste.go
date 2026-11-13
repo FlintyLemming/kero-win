@@ -31,7 +31,7 @@ const (
 // remotePaste takes a paste into a pane of another machine, where this
 // machine's paths mean nothing: the files and the image it holds go to
 // the host (paste.file), and their paths there are pasted, which the
-// programs there read, as Claude Code an image's. Text pastes as it is.
+// programs there read. Text pastes as it is.
 func (a *App) remotePaste(id string, d transfer.Data) bool {
 	if !a.hostOf(id).remote() {
 		return false
@@ -202,12 +202,12 @@ func pastedPath(h *host, p string) string {
 // program takes by their paths. A var for tests.
 var pasteDir = func() string { return filepath.Join(os.TempDir(), "kero-paste") }
 
-// pasteKeep is how long a pasted image's file stays: an agent may come
+// pasteKeep is how long a pasted image's file stays: a program may come
 // back to the path long after the paste.
 const pasteKeep = 7 * 24 * time.Hour
 
 // pasteImageTypes are the images a paste saves for a program, by the
-// extension of their file: those coding agents take.
+// extension of their file.
 var pasteImageTypes = map[transfer.Format]string{
 	transfer.PNG: ".png",
 	"image/jpeg": ".jpg",
@@ -218,7 +218,7 @@ var pasteImageTypes = map[transfer.Format]string{
 // pasteImage takes a paste of the clipboard that holds an image and no
 // text, as a screenshot copied to the clipboard does, and pastes the path
 // of a file with the image instead, as dropping the file on the pane
-// would: coding agents take the path as an image they attach.
+// would.
 //
 // The terminal's own paste cannot carry the image to the program. The
 // program runs in kerod's terminal, where a Kitty clipboard protocol paste

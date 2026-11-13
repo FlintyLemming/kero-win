@@ -172,25 +172,5 @@ func newestChild(procs []procEntry, parent uint32) uint32 {
 }
 
 func foreground(shell int) int {
-	procs := processes()
-	child := newestChild(procs, uint32(shell))
-	if child == 0 {
-		return 0
-	}
-	for pid, depth := child, 0; pid != 0 && depth < 4; pid, depth = newestChild(procs, pid), depth+1 {
-		if detectAgent(procName(int(pid)), procArgs(int(pid))) != "" {
-			return int(pid)
-		}
-	}
-	return int(child)
-}
-
-// procParent returns a process's parent, 0 when it is gone.
-func procParent(pid int) int {
-	for _, e := range processes() {
-		if int(e.pid) == pid {
-			return int(e.parent)
-		}
-	}
-	return 0
+	return int(newestChild(processes(), uint32(shell)))
 }

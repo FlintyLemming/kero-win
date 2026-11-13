@@ -138,7 +138,7 @@ func (a *App) filesSide(c *ui.Context, pal *palette, s *proto.Session) {
 		}
 	}
 	// The folders shown, listed again as the worktree's status changes,
-	// as the tab shows anew, and every few seconds while an agent works,
+	// as the tab shows anew, and every few seconds while a program works,
 	// a few at a time.
 	list := func(dir string) *dirList {
 		l := fs.dirs[filesKey(h, dir)]
@@ -332,7 +332,7 @@ func (a *App) fetchDir(h *host, dir string, ignored bool, stamp string) *dirList
 }
 
 // fileViewer is the viewer of a file of Files: its text, which it reads
-// again as the worktree changes, and every few seconds while an agent
+// again as the worktree changes, and every few seconds while a program
 // works, while the user has no edits of it to save.
 func (a *App) fileViewer(c *ui.Context, pal *palette, s *proto.Session, fv *fileView) {
 	h := a.hostOf(fv.pane)

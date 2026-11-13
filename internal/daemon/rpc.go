@@ -103,12 +103,6 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		s := d.findSessionLocked(p.ID)
 		if s != nil {
 			s.name = strings.TrimSpace(p.Name)
-			s.agentNamed = false
-			if by := d.panes[p.By]; by != nil && s.name != "" {
-				by.mu.Lock()
-				s.agentNamed = by.info.Agent != "" || by.info.AgentSession != nil
-				by.mu.Unlock()
-			}
 		}
 		d.mu.Unlock()
 		if s == nil {
@@ -366,62 +360,6 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		}
 		return d.wait(c, pn, p)
 
-	case "pane.agentSession":
-		var p proto.AgentSessionParams
-		if err := decode(&p); err != nil {
-			return nil, err
-		}
-		as := &proto.AgentSession{Agent: p.Agent, ID: p.Session}
-		if resumeCommand(as) == nil {
-			return nil, fmt.Errorf("no agent session %q of %q", p.Session, p.Agent)
-		}
-		pn, away := d.agentPane(p.PID, p.Agent, p.Dir)
-		if pn == nil {
-			return nil, fmt.Errorf("no pane runs %s session %q", p.Agent, p.Session)
-		}
-		pn.mu.Lock()
-		pn.info.AgentSession = as
-		id := pn.info.ID
-		pn.mu.Unlock()
-		d.changed()
-		d.mu.Lock()
-		sid := pn.sid
-		d.mu.Unlock()
-		d.noteConversations()
-		return proto.AgentSessionResult{Pane: id, Session: sid, Away: away}, nil
-
-	case "conversations":
-		return d.conversations(), nil
-
-	case "conversation.resume":
-		var p proto.ConversationParams
-		if err := decode(&p); err != nil {
-			return nil, err
-		}
-		return d.resumeConversation(p)
-
-	case "conversation.forget":
-		var p proto.ConversationParams
-		if err := decode(&p); err != nil {
-			return nil, err
-		}
-		if !d.convs.forget(p.Agent, p.ID) {
-			return nil, fmt.Errorf("no conversation %s of %s", p.ID, p.Agent)
-		}
-		d.changed()
-		return true, nil
-
-	case "conversation.archive":
-		var p proto.ConversationParams
-		if err := decode(&p); err != nil {
-			return nil, err
-		}
-		if !d.convs.archive(p.Agent, p.ID, p.Archived) {
-			return nil, fmt.Errorf("no conversation %s of %s", p.ID, p.Agent)
-		}
-		d.changed()
-		return true, nil
-
 	case "project.create":
 		var p proto.ProjectParams
 		if err := decode(&p); err != nil {
@@ -560,13 +498,6 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 			return d.gitText(p)
 		}
 		return d.gitPatch(p)
-
-	case "git.revert":
-		var p proto.GitWriteParams
-		if err := decode(&p); err != nil {
-			return nil, err
-		}
-		return d.gitRevert(p)
 
 	case "fs.list":
 		var p proto.FSListParams
@@ -740,9 +671,9 @@ func (d *Daemon) wait(c *controlConn, s *pane, p proto.WaitParams) (any, error) 
 		defer t.Stop()
 		timeout = t.C
 	}
-	// An agent given a prompt takes a moment to start working: waiting
-	// for it to stop right away would end at once. Give it a little time
-	// to start.
+	// A program given input takes a moment to start working: waiting for
+	// it to stop right away would end at once. Give it a little time to
+	// start.
 	if len(p.Status) == 0 && !p.Exit {
 		s.mu.Lock()
 		ch, st, since := s.changed, s.info.Status, s.info.Since

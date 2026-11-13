@@ -349,9 +349,8 @@ func (p *ptyProc) Kill() {
 }
 
 // Foreground returns the program the shell runs: Windows has no process
-// groups, so it is the one of the shell's children that started last,
-// or, down its line of children, the coding agent one of them runs (as
-// cmd.exe does for an npm shim); 0 when there is none.
+// groups, so it is the one of the shell's children that started last;
+// 0 when there is none.
 func (p *ptyProc) Foreground() int {
 	return foreground(p.pid)
 }
