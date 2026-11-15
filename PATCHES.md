@@ -10,7 +10,7 @@
 | 下游 Remote | `origin` (`git@github.com:FlintyLemming/kero-win.git`) |
 | 工作分支 | `main` |
 | 当前上游同步基线 | `09eb1d42dfe24c8ffc07600024e152e096532519`（基于上游 `v2.1.35` 后 1 个提交） |
-| 当前版本 / Tag | `2.1.35-patch.2026111520` / `v2.1.35-patch.2026111520` |
+| 当前版本 / Tag | `2.1.35-patch.2026111521` / `v2.1.35-patch.2026111521` |
 
 ## 版本号与 Tag 规则
 
@@ -41,6 +41,7 @@
 | P007 | 已应用 | 2026-11-15 | `7cccddc` | Windows UI 与交互 | 最大化或全屏时将主窗口与设置窗口关闭按钮热区延伸至最右上角盲点 |
 | P008 | 已应用 | 2026-11-15 | `7cccddc` | UI 与会话创建 | Workspace 顶部标签栏右键 `+` 支持选择 Shell 新建标签页，且不应用默认文件夹与默认命令 |
 | P009 | 已应用 | 2026-11-15 | `bf7369e` | 快捷键与设置 | 在快捷键设置、配置文件、Edit 菜单与终端中新增可自定义/解绑的复制（`edit.copy`）与粘贴（`edit.paste`）快捷键（含 `Insert` 键录制） |
+| P010 | 已应用 | 2026-11-15 | 待提交 | Windows 测试与发布 | 修复 `windows-latest` Runner 下 `TestSaveKeepsASymlinkedConfig` 与 `TestConsoleInheritCursor/system` 兼容性，并补充 `CHANGELOG.md` 发版说明 |
 
 ---
 
@@ -211,6 +212,17 @@
 - **同步上游时的冲突处理原则**：
   - 合并 `internal/actions/actions.go`、`actions.go`、`app.go` 与 `locales/*.json` 时，保留 `edit.copy` / `edit.paste`、`editRoleItem` 与 `termKeybinds`；
   - 若上游修改 `Edit` 菜单项构造或 `termOptions` 参数，需保持 `RoleCopy` / `RolePaste` 对 `a.accelerator` 的引用，并在 `anew` 中继续追踪 `edit.copy` / `edit.paste` 变更，然后重新执行 `go tool mygo generate`。
+
+### P010：Windows Runner 测试兼容性与发版日志
+
+- **日期**：2026-11-15
+- **目的**：修复在 GitHub `windows-latest`（开启 Developer Mode 符号链接权限的 Windows Server 2022）上暴露的两个上游测试环境假定，并补齐 `mygo build -upload` 要求的 `CHANGELOG.md` 版本说明。
+- **改动清单**：
+  1. `internal/settings/config_test.go`（`TestSaveKeepsASymlinkedConfig`）：保存前记录 `os.Stat(dotfiles)` 权限位，保存后断言前后权限位一致，兼容 Windows NTFS（`-rw-rw-rw-`）。
+  2. `internal/daemon/pty_windows_test.go`（`TestConsoleInheritCursor`）：参照同文件 `TestConsoleClearScreen`，在 `cp.clear == nil && windows.RtlGetVersion().BuildNumber < 26100` 时跳过 Windows 11 24H2 之前旧版系统自带 ConPTY 子测试，保留 `bundled` ConPTY 验证。
+  3. `CHANGELOG.md`：在顶部增加 `## 2.1.35-patch.2026111521` 章节以通过 `mygo build -upload` 校验。
+- **同步上游时的冲突处理原则**：
+  - 合并 `internal/settings/config_test.go` 与 `internal/daemon/pty_windows_test.go` 时保留上述 Windows 兼容断言/跳过条件；`CHANGELOG.md` 顶部保留当前发行版本章节。
 
 ---
 

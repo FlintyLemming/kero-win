@@ -148,6 +148,9 @@ func TestConsoleInheritCursor(t *testing.T) {
 	}
 	for name, cp := range conPTYs(t) {
 		t.Run(name, func(t *testing.T) {
+			if cp.clear == nil && windows.RtlGetVersion().BuildNumber < 26100 {
+				t.Skip("system ConPTY before Windows 11 24H2 does not emit inherited cursor row positioning")
+			}
 			c := startConsoleWith(t, ptyOptions{Path: shell, Args: []string{"pwsh", "-NoLogo", "-NoProfile"}, conpty: cp, InheritCursor: true})
 			at := c.waitFor(0, regexp.MustCompile(`\x1b\[6n`), "cursor position request")
 			c.proc.Write([]byte("\x1b[8;1R"))

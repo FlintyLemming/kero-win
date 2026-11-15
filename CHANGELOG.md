@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.35-patch.2026111521
+
+- Remove AI / coding agent integrations, keeping Kero as a pure terminal multiplexer.
+- Add **Top session tabs** in Settings › General (`top-tabs`) with middle-click tab close, plus right-click **Default Shell** and **Default Command…** per workspace.
+- Change the top-left `+` button to **New Workspace…** (supporting name-only workspaces without a directory) and unify Workspace terminology across the UI.
+- Extend the maximized/fullscreen window close button hit-area to the top-right corner on Windows/Linux (main and Settings windows).
+- Right-click the `+` button in the top tab bar to open a new tab with a chosen shell while skipping default folder/command settings.
+- Add customizable **Copy** and **Paste** shortcuts in Settings › Keyboard (`edit.copy`, `edit.paste`, including `Insert` combinations).
+
 ## 2.1.35
 
 - **Wrap long lines** in the viewer's diffs and files, from the Wrap

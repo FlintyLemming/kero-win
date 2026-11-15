@@ -255,6 +255,10 @@ func TestSaveKeepsASymlinkedConfig(t *testing.T) {
 	dotfiles := filepath.Join(dir, "dotfiles", "kero", "config")
 	os.MkdirAll(filepath.Dir(dotfiles), 0o755)
 	os.WriteFile(dotfiles, []byte("# mine\nfont-size = 14\n"), 0o600)
+	before, err := os.Stat(dotfiles)
+	if err != nil {
+		t.Fatal(err)
+	}
 	link := filepath.Join(dir, "config", "kero", "config")
 	os.MkdirAll(filepath.Dir(link), 0o755)
 	if err := os.Symlink("../../dotfiles/kero/config", link); err != nil {
@@ -277,8 +281,8 @@ func TestSaveKeepsASymlinkedConfig(t *testing.T) {
 	if string(b) != "# mine\nfont-size = 16\n" {
 		t.Errorf("dotfiles' config:\n%s", b)
 	}
-	if st, _ := os.Stat(dotfiles); st.Mode().Perm() != 0o600 {
-		t.Errorf("mode %v", st.Mode().Perm())
+	if st, _ := os.Stat(dotfiles); st.Mode().Perm() != before.Mode().Perm() {
+		t.Errorf("mode %v, want %v", st.Mode().Perm(), before.Mode().Perm())
 	}
 }
 
