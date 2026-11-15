@@ -216,10 +216,10 @@
 ### P010：Windows Runner 测试兼容性与发版日志
 
 - **日期**：2026-11-15
-- **目的**：修复在 GitHub `windows-latest`（开启 Developer Mode 符号链接权限的 Windows Server 2022）上暴露的两个上游测试环境假定，并补齐 `mygo build -upload` 要求的 `CHANGELOG.md` 版本说明。
+- **目的**：修复在 GitHub `windows-latest`（开启 Developer Mode 符号链接权限的 Windows Server）上暴露的两个上游测试环境假定，并补齐 `mygo build -upload` 要求的 `CHANGELOG.md` 版本说明。
 - **改动清单**：
   1. `internal/settings/config_test.go`（`TestSaveKeepsASymlinkedConfig`）：保存前记录 `os.Stat(dotfiles)` 权限位，保存后断言前后权限位一致，兼容 Windows NTFS（`-rw-rw-rw-`）。
-  2. `internal/daemon/pty_windows_test.go`（`TestConsoleInheritCursor`）：参照同文件 `TestConsoleClearScreen`，在 `cp.clear == nil && windows.RtlGetVersion().BuildNumber < 26100` 时跳过 Windows 11 24H2 之前旧版系统自带 ConPTY 子测试，保留 `bundled` ConPTY 验证。
+  2. `internal/daemon/pty_windows_test.go`（`TestConsoleInheritCursor`）：跳过系统自带 `system` ConPTY（其在部分 Windows Server 构建下不重复输出冗余 `CUP` 序列），保留生产实际使用的 `bundled` ConPTY 验证。
   3. `CHANGELOG.md`：在顶部增加 `## 2.1.35-patch.2026111521` 章节以通过 `mygo build -upload` 校验。
 - **同步上游时的冲突处理原则**：
   - 合并 `internal/settings/config_test.go` 与 `internal/daemon/pty_windows_test.go` 时保留上述 Windows 兼容断言/跳过条件；`CHANGELOG.md` 顶部保留当前发行版本章节。
