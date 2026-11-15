@@ -187,11 +187,14 @@ func (d *Daemon) startPane(sid string, p proto.CreateParams, dir string) (*pane,
 	}
 	if p.URL != "" {
 		info.URL, info.Command = proto.BrowserURL(p.URL), nil
+	} else {
+		info.Shell = resolveShell(p.Shell).name
 	}
 	pn, err := newPane(d, sid, info)
 	if err != nil || pn.info.Browser() {
 		return pn, err
 	}
+	pn.shell = p.Shell
 	if err := pn.start(p.Command, p.Env); err != nil {
 		pn.term.Close()
 		return nil, err
@@ -210,14 +213,25 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 	}
 	d.mu.Lock()
 	project := d.projectFor(p.Project, dir)
-	if dir == "" {
-		for _, pr := range d.projects {
-			if pr.ID == project {
+	var projectCmd, projectShell string
+	for _, pr := range d.projects {
+		if pr.ID == project {
+			if dir == "" {
 				dir = pr.Dir
 			}
+			projectCmd = pr.Command
+			projectShell = pr.Shell
 		}
 	}
 	d.mu.Unlock()
+	if p.URL == "" {
+		if len(p.Command) == 0 && projectCmd != "" {
+			p.Command = []string{projectCmd}
+		}
+		if p.Shell == "" && projectShell != "" {
+			p.Shell = projectShell
+		}
+	}
 	var wt *proto.Worktree
 	if p.Worktree != "" {
 		// In the project of the repository, where the sidebar shows it
@@ -271,6 +285,14 @@ func (d *Daemon) split(p proto.CreateParams) (proto.Session, error) {
 			p.Rows = max(p.Rows/2, 4)
 		} else {
 			p.Cols = max(p.Cols/2, 10)
+		}
+	}
+	if p.Shell == "" && p.URL == "" && s.project != "" {
+		for _, pr := range d.projects {
+			if pr.ID == s.project && pr.Shell != "" {
+				p.Shell = pr.Shell
+				break
+			}
 		}
 	}
 	sid, atID := s.id, at.info.ID

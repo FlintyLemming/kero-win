@@ -232,3 +232,229 @@ func TestProjectMenuMoves(t *testing.T) {
 	}
 	wantMoved(t, moved, proto.MoveProjectParams{ID: "p2", Index: 1})
 }
+
+// Right-clicking a project opens Default Command…, which sets, edits, and
+// clears the project's default command and sends project.command to kerod.
+func TestProjectMenuDefaultCommand(t *testing.T) {
+	a := testApp(t)
+	a.st = proto.State{
+		Projects: []proto.Project{
+			{ID: "p1", Name: "alpha", Dir: "/tmp/alpha"},
+			{ID: "p2", Name: "beta", Dir: "/tmp/beta"},
+		},
+		Sessions: []proto.Session{
+			{ID: "s1", Project: "p1", Name: "api", Panes: []proto.Pane{{ID: "a", Shell: "zsh", Dir: "/tmp/alpha", Status: proto.Idle, Progress: -1}}, Focus: "a"},
+			{ID: "s2", Project: "p2", Name: "web", Panes: []proto.Pane{{ID: "b", Shell: "zsh", Dir: "/tmp/beta", Status: proto.Idle, Progress: -1}}, Focus: "b"},
+			{ID: "s3", Project: "", Name: "loose", Panes: []proto.Pane{{ID: "c", Shell: "zsh", Dir: "/tmp", Status: proto.Idle, Progress: -1}}, Focus: "c"},
+		},
+	}
+	a.selected = "s1"
+	a.local().conn = connReady
+	a.terms["a"], a.terms["b"], a.terms["c"] = &termEntry{}, &termEntry{}, &termEntry{}
+	cmds := make(chan proto.ProjectParams, 4)
+	a.local().cl, _ = projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method == "project.command" {
+			var p proto.ProjectParams
+			json.Unmarshal(raw, &p)
+			cmds <- p
+		}
+		return true, nil
+	})
+	wantCmd := func(want proto.ProjectParams) {
+		t.Helper()
+		select {
+		case got := <-cmds:
+			if got != want {
+				t.Errorf("kerod received project.command %+v, want %+v", got, want)
+			}
+		case <-time.After(2 * time.Second):
+			t.Errorf("kerod did not receive project.command %+v", want)
+		}
+	}
+
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+
+	// "Other" has no project ID, so Default Command… is disabled.
+	if err := tt.RightClick("Other"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Default Command…"); err == nil {
+		t.Error("Default Command… was enabled for Other")
+	}
+	tt.CloseMenu()
+	tt.Frame()
+
+	// Right-click beta and set a default command via Return.
+	if err := tt.RightClick("beta"); err != nil {
+		t.Fatal(err)
+	}
+	if got := tt.Menu(); !slices.Contains(got, "Default Command…") {
+		t.Fatalf("beta's menu is %q", got)
+	}
+	if err := tt.ChooseMenuItem("Default Command…"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.cmdAsk == nil || !a.cmdAsk.open {
+		t.Fatal("default command dialog did not open")
+	}
+	tt.Type("npm run dev")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if a.cmdAsk != nil {
+		t.Fatalf("dialog remained open: %+v", a.cmdAsk)
+	}
+	if got := a.project("p2").Command; got != "npm run dev" {
+		t.Fatalf("beta command = %q, want %q", got, "npm run dev")
+	}
+	wantCmd(proto.ProjectParams{ID: "p2", Command: "npm run dev"})
+
+	// Reopening pre-fills the command and offers Clear.
+	if err := tt.RightClick("beta"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Default Command…"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.cmdAsk == nil || a.cmdAsk.command != "npm run dev" {
+		t.Fatalf("reopened dialog command = %+v", a.cmdAsk)
+	}
+	if err := tt.Click("Clear"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.cmdAsk != nil {
+		t.Fatalf("dialog remained open after Clear: %+v", a.cmdAsk)
+	}
+	if got := a.project("p2").Command; got != "" {
+		t.Fatalf("cleared beta command = %q, want empty", got)
+	}
+	wantCmd(proto.ProjectParams{ID: "p2", Command: ""})
+
+	// TopTabs sidebar mode exposes the same context menu item and dialog.
+	a.set.TopTabs = true
+	tt.Frame()
+	if err := tt.RightClick("alpha"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Default Command…"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if a.cmdAsk == nil || !a.cmdAsk.open || a.cmdAsk.id != "p1" {
+		t.Fatalf("top-tabs dialog = %+v, want open for p1", a.cmdAsk)
+	}
+	tt.Type("go test ./...")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if got := a.project("p1").Command; got != "go test ./..." {
+		t.Fatalf("top-tabs alpha command = %q, want %q", got, "go test ./...")
+	}
+	wantCmd(proto.ProjectParams{ID: "p1", Command: "go test ./..."})
+}
+
+// Right-clicking a project offers Default Shell with detected host shells
+// (including PowerShell versions, Command Prompt, and WSL distributions), and
+// choosing one sends project.shell to kerod.
+func TestProjectMenuDefaultShell(t *testing.T) {
+	a := testApp(t)
+	a.st = proto.State{
+		Projects: []proto.Project{
+			{ID: "p1", Name: "alpha", Dir: "/tmp/alpha"},
+			{ID: "p2", Name: "beta", Dir: "/tmp/beta"},
+		},
+		Sessions: []proto.Session{
+			{ID: "s1", Project: "p1", Name: "api", Panes: []proto.Pane{{ID: "a", Shell: "pwsh", Dir: "/tmp/alpha", Status: proto.Idle, Progress: -1}}, Focus: "a"},
+			{ID: "s2", Project: "p2", Name: "web", Panes: []proto.Pane{{ID: "b", Shell: "pwsh", Dir: "/tmp/beta", Status: proto.Idle, Progress: -1}}, Focus: "b"},
+			{ID: "s3", Project: "", Name: "loose", Panes: []proto.Pane{{ID: "c", Shell: "pwsh", Dir: "/tmp", Status: proto.Idle, Progress: -1}}, Focus: "c"},
+		},
+	}
+	a.selected = "s1"
+	a.local().conn = connReady
+	a.local().shellsLoaded = true
+	a.local().shellDefault = `C:\Program Files\PowerShell\7\pwsh.exe`
+	a.local().shells = []proto.ShellOption{
+		{ID: "pwsh", Name: "PowerShell", Path: `C:\Program Files\PowerShell\7\pwsh.exe`, Kind: "pwsh"},
+		{ID: "powershell", Name: "Windows PowerShell", Path: `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`, Kind: "powershell"},
+		{ID: "cmd", Name: "Command Prompt", Path: `C:\Windows\System32\cmd.exe`, Kind: "cmd"},
+		{ID: "wsl:Ubuntu", Name: "Ubuntu", Path: `C:\Windows\System32\wsl.exe`, Kind: "wsl"},
+		{ID: `C:\Program Files\Git\bin\bash.exe`, Name: "Git Bash", Path: `C:\Program Files\Git\bin\bash.exe`, Kind: "bash"},
+	}
+	a.terms["a"], a.terms["b"], a.terms["c"] = &termEntry{}, &termEntry{}, &termEntry{}
+	sent := make(chan proto.ProjectParams, 8)
+	a.local().cl, _ = projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method == "project.shell" {
+			var p proto.ProjectParams
+			json.Unmarshal(raw, &p)
+			sent <- p
+		}
+		return true, nil
+	})
+	wantShell := func(want proto.ProjectParams) {
+		t.Helper()
+		select {
+		case got := <-sent:
+			if got != want {
+				t.Errorf("kerod received project.shell %+v, want %+v", got, want)
+			}
+		case <-time.After(2 * time.Second):
+			t.Errorf("kerod did not receive project.shell %+v", want)
+		}
+	}
+
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+
+	// "Other" has no project ID, so Default Shell is disabled.
+	if err := tt.RightClick("Other"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Default Shell"); err == nil {
+		t.Error("Default Shell was enabled for Other")
+	}
+	tt.CloseMenu()
+	tt.Frame()
+
+	// Right-click beta and pick Ubuntu, Windows PowerShell, Command Prompt, then reset to Default.
+	for _, tc := range []struct {
+		item string
+		want string
+	}{
+		{"Ubuntu", "wsl:Ubuntu"},
+		{"Windows PowerShell", "powershell"},
+		{"Command Prompt", "cmd"},
+		{"Default (PowerShell)", ""},
+	} {
+		if err := tt.RightClick("beta"); err != nil {
+			t.Fatal(err)
+		}
+		if got := tt.Menu(); !slices.Contains(got, "Default Shell") {
+			t.Fatalf("beta's menu is %q", got)
+		}
+		if err := tt.ChooseMenuItem("Default Shell", tc.item); err != nil {
+			t.Fatalf("choosing %q: %v", tc.item, err)
+		}
+		tt.Frame()
+		if got := a.project("p2").Shell; got != tc.want {
+			t.Fatalf("after %q, beta shell = %q, want %q", tc.item, got, tc.want)
+		}
+		wantShell(proto.ProjectParams{ID: "p2", Shell: tc.want})
+	}
+
+	// TopTabs sidebar mode exposes the same Default Shell submenu.
+	a.set.TopTabs = true
+	tt.Frame()
+	if err := tt.RightClick("alpha"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Default Shell", "PowerShell"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if got := a.project("p1").Shell; got != "pwsh" {
+		t.Fatalf("top-tabs alpha shell = %q, want %q", got, "pwsh")
+	}
+	wantShell(proto.ProjectParams{ID: "p1", Shell: "pwsh"})
+}

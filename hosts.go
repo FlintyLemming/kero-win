@@ -49,6 +49,12 @@ type host struct {
 	// busy is what the app does on the host for the user: install, update
 	// or restart.
 	busy string
+
+	shells        []proto.ShellOption
+	shellDefault  string
+	shellsLoaded  bool
+	shellsLoading bool
+	shellsAt      time.Time
 }
 
 func (h *host) remote() bool { return h.name != "" }
@@ -385,6 +391,7 @@ func (a *App) connected(h *host, gen int, rc *remote.Conn, cl *client.Client, er
 	cl.Go("subscribe", nil, nil)
 	h.viewSent = nil
 	a.reportView()
+	a.fetchShells(h)
 	go func() {
 		<-cl.Done()
 		a.update(func() { a.disconnected(h, cl) })
@@ -603,6 +610,12 @@ func (a *App) sameKerod(h *host, rc *remote.Conn, cl *client.Client) *host {
 func (a *App) reselect() {
 	if a.session(a.selected) != nil {
 		return
+	}
+	if a.set.TopTabs && a.selectedProject != "" {
+		if g, ok := a.selectedGroup(); ok && g.key() == a.selectedProject && g.project.ID != "" && len(g.sessions) == 0 {
+			a.selected = ""
+			return
+		}
 	}
 	ids := a.visibleOrder()
 	switch {

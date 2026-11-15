@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -23,8 +24,9 @@ import (
 // (info.URL), which the app shows: it has neither, only its place in its
 // session and the page the app last told.
 type pane struct {
-	d   *Daemon
-	sid string // the session's it belongs to
+	d     *Daemon
+	sid   string // the session's it belongs to
+	shell string // per-project shell override; "" uses userShell()
 
 	// mu guards the fields below, and orders the output the emulator and
 	// the clients get with clients attaching. The emulator's callbacks
@@ -120,7 +122,7 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 		// terminal clears when it resizes, as zsh draws them again: a
 		// prompt as wide as the terminal, as Powerlevel10k's, would leave
 		// a copy at each size otherwise.
-		ShellIntegration: zshPrompts(),
+		ShellIntegration: zshPrompts() || (runtime.GOOS != "windows" && info.Shell == "zsh"),
 	})
 	if err != nil {
 		return nil, err
@@ -133,13 +135,17 @@ func newPane(d *Daemon, sid string, info proto.Pane) (*pane, error) {
 
 // start starts the shell, running command first when set.
 func (s *pane) start(command []string, env []string) error {
-	shell := userShell()
-	name := shellName(shell)
-	bin, zdot := s.d.binFirst(), ""
-	if name == "zsh" {
-		zdot = s.d.zshDir()
+	spec := resolveShell(s.shell)
+	shell := spec.exe
+	name := spec.name
+	bin, zdot := "", ""
+	if spec.wsl == "" {
+		bin = s.d.binFirst()
+		if name == "zsh" {
+			zdot = s.d.zshDir()
+		}
 	}
-	args := shellArgs(shell, bin, zdot, command)
+	args := shellSpecArgs(spec, bin, zdot, command)
 	if zdot != "" {
 		env = append(env[:len(env):len(env)], zshEnv(zdot)...)
 	}
@@ -165,7 +171,7 @@ func (s *pane) start(command []string, env []string) error {
 	s.info.Dir = dir
 	s.info.Shell = name
 	s.info.CommandExit = nil
-	s.awaiting = len(command) > 0 && marksExit(shell)
+	s.awaiting = len(command) > 0 && marksExitSpec(spec)
 	s.mu.Unlock()
 	go s.pump(proc)
 	return nil

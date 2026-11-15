@@ -543,6 +543,9 @@ func (a *App) generalPage(c *ui.Context, pal *palette) {
 		settingRow(c, pal, locales.SetSidebarCount(), locales.SetSidebarCountDetail(), func() {
 			toggle(c.Key("sidebar-count"), &s.SidebarCount, pal)
 		})
+		settingRow(c, pal, locales.SetTopTabs(), locales.SetTopTabsDetail(), func() {
+			toggle(c.Key("top-tabs"), &s.TopTabs, pal)
+		})
 		settingRow(c, pal, locales.SetFocusFollowsMouse(), locales.SetFocusFollowsMouseDetail(), func() {
 			toggle(c.Key("focusmouse"), &s.FocusFollowsMouse, pal)
 		})

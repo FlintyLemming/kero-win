@@ -1148,5 +1148,50 @@
   "worktreeRemoveAnyway": "Remove Anyway",
   "actionQuickTerminal": "Quick Terminal",
   "toastGlobalShortcutFailed": "Couldn’t use {keys} for the quick terminal: {error}",
-  "setShortcutGlobal": "Works in every app"
+  "setShortcutGlobal": "Works in every app",
+  "setTopTabs": "Top session tabs",
+  "setTopTabsDetail": "List only projects in the sidebar, and show the active project’s sessions as tabs along the top.",
+  "tabsCloseOthers": "Close Other Sessions",
+  "tabsCloseRight": "Close Sessions to the Right",
+  "sidebarSessionsCount": "{count, plural, one {# session} other {# sessions}}",
+  "@sidebarSessionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectNoSessionsDetail": "Start a session in “{project}” to work here.",
+  "@projectNoSessionsDetail": {
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "commonClear": "Clear",
+  "sidebarDefaultCommandMenu": "Default Command…",
+  "sidebarDefaultCommandTip": "Default command: {command}",
+  "projectCommandTitle": "Default Command for “{name}”",
+  "projectCommandDetail": "Runs when a new session starts in this project. Leave empty to start the default shell.",
+  "projectCommandPlaceholder": "e.g. npm run dev",
+  "sidebarDefaultShellMenu": "Default Shell",
+  "sidebarDefaultShellAuto": "Default",
+  "sidebarDefaultShellAutoNamed": "Default ({shell})",
+  "@sidebarDefaultShellAutoNamed": {
+    "placeholders": {
+      "shell": {
+        "type": "String"
+      }
+    }
+  },
+  "sidebarDefaultShellTip": "Default shell: {shell}",
+  "@sidebarDefaultShellTip": {
+    "placeholders": {
+      "shell": {
+        "type": "String"
+      }
+    }
+  },
+  "shellCommandPrompt": "Command Prompt"
 }

@@ -142,9 +142,25 @@ type State struct {
 
 // Project groups sessions, usually those of one repository.
 type Project struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Dir  string `json:"dir,omitempty"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Dir     string `json:"dir,omitempty"`
+	Command string `json:"command,omitempty"`
+	Shell   string `json:"shell,omitempty"`
+}
+
+// ShellOption describes one shell profile available on a host.
+type ShellOption struct {
+	ID   string `json:"id"`             // stable identifier persisted on a project (e.g. "pwsh", "powershell", "cmd", "wsl:Ubuntu", or a path)
+	Name string `json:"name"`           // display name shown to the user (e.g. "PowerShell", "Windows PowerShell", "Ubuntu")
+	Path string `json:"path,omitempty"` // resolved executable path when applicable
+	Kind string `json:"kind,omitempty"` // "pwsh", "powershell", "cmd", "wsl", "bash", or "unix"
+}
+
+// HostShells reports the daemon's default shell and available shell profiles.
+type HostShells struct {
+	Default string        `json:"default,omitempty"`
+	Shells  []ShellOption `json:"shells,omitempty"`
 }
 
 // Pane is a terminal the daemon keeps running: a shell in a
@@ -638,6 +654,7 @@ type (
 		Project string   `json:"project,omitempty"` // id or name; "" the first
 		Name    string   `json:"name,omitempty"`
 		Dir     string   `json:"dir,omitempty"` // "" the project's, else home
+		Shell   string   `json:"shell,omitempty"`
 		Command []string `json:"command,omitempty"`
 		Env     []string `json:"env,omitempty"`
 		// URL makes a browser pane showing it, instead of a shell.
@@ -798,9 +815,11 @@ type (
 		Report string `json:"report"`
 	}
 	ProjectParams struct {
-		ID   string `json:"id,omitempty"`
-		Name string `json:"name,omitempty"`
-		Dir  string `json:"dir,omitempty"`
+		ID      string `json:"id,omitempty"`
+		Name    string `json:"name,omitempty"`
+		Dir     string `json:"dir,omitempty"`
+		Command string `json:"command,omitempty"`
+		Shell   string `json:"shell,omitempty"`
 	}
 	MoveProjectParams struct {
 		ID    string `json:"id"`

@@ -127,6 +127,11 @@ type App struct {
 	renamingProject string
 	renameBuf       string
 	projMove        projectMove // the project dragged in the sidebar
+	selectedProject string            // active project's group key when TopTabs is enabled
+	projectSession  map[string]string // last selected session id by project group key
+	tabScroll       ui.ScrollState    // horizontal scroll state for the top session tabs
+	tabMove         tabMove           // the session tab dragged horizontally
+	revealTab       string            // session id whose tab should scroll into view
 
 	renameFrames int
 	chrome       chrome // where the sidebar's animation puts things
@@ -135,6 +140,7 @@ type App struct {
 	find         findState
 	confirm      *confirmation
 	wtAsk        *worktreeAsk
+	cmdAsk       *projectCommandAsk
 	sideDrag     float32 // the width as a drag of the sidebar's edge began
 	pendingToast string
 	// later are actions that change what the view is building, run once
@@ -181,7 +187,7 @@ type confirmation struct {
 
 func newApp() *App {
 	a := &App{terms: map[string]*termEntry{}, webs: map[string]*webEntry{}, statuses: map[string]proto.Status{}, active: true, focused: true,
-		refs: map[string]*ui.Handle{}, focus: map[string]string{}, arrived: map[string]bool{}}
+		refs: map[string]*ui.Handle{}, focus: map[string]string{}, arrived: map[string]bool{}, projectSession: map[string]string{}}
 	a.loadPrefs()
 	a.loadBackup()
 	a.set = settings.Load()
@@ -523,6 +529,15 @@ func (a *App) selectSession(id string) {
 	changed := a.selected != id
 	a.selected = id
 	s := a.session(id)
+	key := a.groupKeyOf(s)
+	if key != "" {
+		a.selectedProject = key
+		if a.projectSession == nil {
+			a.projectSession = map[string]string{}
+		}
+		a.projectSession[key] = id
+	}
+	a.revealTab = id
 	for _, p := range s.Panes {
 		a.ensureTerm(p.ID)
 	}
@@ -1185,6 +1200,12 @@ func (a *App) toast(msg string) { a.pendingToast = msg }
 // session shown when it is the project's, as a terminal's new tab does,
 // else the project's. With no project, it is the shown session's host's.
 func (a *App) newSession(projectID string) {
+	if projectID == "" && a.set.TopTabs {
+		if g, ok := a.selectedGroup(); ok {
+			a.newSessionOn(g.host, g.project.ID)
+			return
+		}
+	}
 	h := a.selectedHost()
 	if projectID != "" {
 		h = a.hostOf(projectID)
@@ -1402,15 +1423,34 @@ func (a *App) endSession(id string, p proto.CloseParams) {
 		return
 	}
 	h := a.hostOf(id)
+	stayEmpty := false
 	if id == a.selected {
 		// The next session takes its place, else the one before.
-		ids := a.visibleOrder()
-		i := slices.Index(ids, id)
 		next := ""
-		if i >= 0 && i+1 < len(ids) {
-			next = ids[i+1]
-		} else if i > 0 {
-			next = ids[i-1]
+		if a.set.TopTabs {
+			tabs := a.sessionTabsOrder()
+			ti := slices.Index(tabs, id)
+			if ti >= 0 && ti+1 < len(tabs) {
+				next = tabs[ti+1]
+			} else if ti > 0 {
+				next = tabs[ti-1]
+			}
+			if next == "" {
+				if g, ok := a.selectedGroup(); ok && g.project.ID != "" {
+					// Closing the last session of a project keeps that project active.
+					a.selectedProject = g.key()
+					stayEmpty = true
+				}
+			}
+		}
+		if !stayEmpty && next == "" {
+			ids := a.visibleOrder()
+			i := slices.Index(ids, id)
+			if i >= 0 && i+1 < len(ids) {
+				next = ids[i+1]
+			} else if i > 0 {
+				next = ids[i-1]
+			}
 		}
 		a.selected = next
 		if next != "" {
@@ -1422,6 +1462,11 @@ func (a *App) endSession(id string, p proto.CloseParams) {
 	}
 	a.st.Sessions = slices.DeleteFunc(a.st.Sessions, func(x proto.Session) bool { return x.ID == id })
 	a.callOn(h, "close", p, nil)
+	if stayEmpty {
+		a.reportView()
+		a.updateTitle()
+		a.savePrefs()
+	}
 }
 
 // closeAllSessions closes every session of a group, leaving its
@@ -1484,6 +1529,43 @@ func (a *App) commitProjectRename() {
 	a.focusTerminal()
 }
 
+// projectCommandAsk asks for a project's default command, which new sessions in
+// the project run when no other command is given.
+type projectCommandAsk struct {
+	open    bool
+	id      string
+	name    string
+	command string
+	had     bool
+}
+
+func (a *App) startProjectCommand(p proto.Project) {
+	if p.ID == "" {
+		return
+	}
+	a.cmdAsk = &projectCommandAsk{
+		open:    true,
+		id:      p.ID,
+		name:    p.Name,
+		command: p.Command,
+		had:     p.Command != "",
+	}
+}
+
+func (a *App) setProjectCommand(id, command string) {
+	cmd := strings.TrimSpace(command)
+	for i := range a.st.Projects {
+		if p := &a.st.Projects[i]; p.ID == id {
+			if cmd == p.Command {
+				return
+			}
+			p.Command = cmd // at once; the daemon's state follows
+			a.call(id, "project.command", proto.ProjectParams{ID: id, Command: cmd}, nil)
+			return
+		}
+	}
+}
+
 func (a *App) moveSession(id, project string) {
 	if s := a.session(id); s != nil {
 		s.Project = project
@@ -1493,6 +1575,9 @@ func (a *App) moveSession(id, project string) {
 
 func (a *App) selectOffset(d int) {
 	ids := a.visibleOrder()
+	if a.set.TopTabs {
+		ids = a.sessionTabsOrder()
+	}
 	if len(ids) == 0 {
 		return
 	}

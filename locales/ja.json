@@ -594,5 +594,22 @@
   "worktreeRemoveAnyway": "それでも削除",
   "actionQuickTerminal": "クイックターミナル",
   "toastGlobalShortcutFailed": "{keys} をクイックターミナルに使えませんでした: {error}",
-  "setShortcutGlobal": "どのアプリでも使えます"
+  "setShortcutGlobal": "どのアプリでも使えます",
+  "setTopTabs": "上部にセッションタブを表示",
+  "setTopTabsDetail": "サイドバーにはプロジェクトのみを並べ、選択中のプロジェクトのセッションを上部に横並びのタブとして表示します。",
+  "tabsCloseOthers": "ほかのセッションを閉じる",
+  "tabsCloseRight": "右側のセッションを閉じる",
+  "sidebarSessionsCount": "{count} セッション",
+  "projectNoSessionsDetail": "ここで作業するには“{project}”でセッションを開始します。",
+  "commonClear": "消去",
+  "sidebarDefaultCommandMenu": "デフォルトコマンド…",
+  "sidebarDefaultCommandTip": "デフォルトコマンド: {command}",
+  "projectCommandTitle": "“{name}”のデフォルトコマンド",
+  "projectCommandDetail": "このプロジェクトで新しいセッションを開始するときに実行します。空にするとデフォルトのシェルを起動します。",
+  "projectCommandPlaceholder": "例: npm run dev",
+  "sidebarDefaultShellMenu": "デフォルトシェル",
+  "sidebarDefaultShellAuto": "デフォルト",
+  "sidebarDefaultShellAutoNamed": "デフォルト ({shell})",
+  "sidebarDefaultShellTip": "デフォルトシェル: {shell}",
+  "shellCommandPrompt": "コマンド プロンプト"
 }

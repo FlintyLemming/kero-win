@@ -12,6 +12,7 @@ import (
 
 	"kero/internal/proto"
 	"kero/internal/remote"
+	"kero/internal/shell"
 )
 
 // call runs a control method. Methods taking a pane take a session too,
@@ -449,6 +450,28 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 		d.changed()
 		return true, nil
 
+	case "project.command":
+		var p proto.ProjectParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		cmd := strings.TrimSpace(p.Command)
+		if err := d.updateProject(p.ID, func(pr *proto.Project) { pr.Command = cmd }); err != nil {
+			return nil, err
+		}
+		return true, nil
+
+	case "project.shell":
+		var p proto.ProjectParams
+		if err := decode(&p); err != nil {
+			return nil, err
+		}
+		sh := strings.TrimSpace(p.Shell)
+		if err := d.updateProject(p.ID, func(pr *proto.Project) { pr.Shell = sh }); err != nil {
+			return nil, err
+		}
+		return true, nil
+
 	case "project.move":
 		var p proto.MoveProjectParams
 		if err := decode(&p); err != nil {
@@ -557,6 +580,12 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 
 	case "host.info":
 		return remote.LocalInfo(""), nil
+
+	case "host.shells":
+		return proto.HostShells{
+			Default: userShell(),
+			Shells:  shell.Available(),
+		}, nil
 
 	case "clients":
 		return d.clientList(), nil
@@ -707,4 +736,21 @@ func (d *Daemon) wait(c *controlConn, s *pane, p proto.WaitParams) (any, error) 
 			return nil, errors.New("kerod exited")
 		}
 	}
+}
+
+func (d *Daemon) updateProject(id string, edit func(*proto.Project)) error {
+	d.mu.Lock()
+	found := false
+	for i := range d.projects {
+		if d.projects[i].ID == id {
+			edit(&d.projects[i])
+			found = true
+		}
+	}
+	d.mu.Unlock()
+	if !found {
+		return fmt.Errorf("no project %q", id)
+	}
+	d.changed()
+	return nil
 }

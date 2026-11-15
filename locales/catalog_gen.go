@@ -6059,3 +6059,181 @@ func SetShortcutGlobal() string { return In(i18n.Locale()).SetShortcutGlobal() }
 func (msgs Messages) SetShortcutGlobal() string {
 	return Catalog.Format(msgs.locale, "setShortcutGlobal", nil)
 }
+
+// SetTopTabs says "Top session tabs"
+// in the language the app shows.
+func SetTopTabs() string { return In(i18n.Locale()).SetTopTabs() }
+
+// SetTopTabs says "Top session tabs"
+// in the language of msgs.
+func (msgs Messages) SetTopTabs() string {
+	return Catalog.Format(msgs.locale, "setTopTabs", nil)
+}
+
+// SetTopTabsDetail says "List only projects in the sidebar, and show the active project’s sessions as tabs along the top."
+// in the language the app shows.
+func SetTopTabsDetail() string { return In(i18n.Locale()).SetTopTabsDetail() }
+
+// SetTopTabsDetail says "List only projects in the sidebar, and show the active project’s sessions as tabs along the top."
+// in the language of msgs.
+func (msgs Messages) SetTopTabsDetail() string {
+	return Catalog.Format(msgs.locale, "setTopTabsDetail", nil)
+}
+
+// TabsCloseOthers says "Close Other Sessions"
+// in the language the app shows.
+func TabsCloseOthers() string { return In(i18n.Locale()).TabsCloseOthers() }
+
+// TabsCloseOthers says "Close Other Sessions"
+// in the language of msgs.
+func (msgs Messages) TabsCloseOthers() string {
+	return Catalog.Format(msgs.locale, "tabsCloseOthers", nil)
+}
+
+// TabsCloseRight says "Close Sessions to the Right"
+// in the language the app shows.
+func TabsCloseRight() string { return In(i18n.Locale()).TabsCloseRight() }
+
+// TabsCloseRight says "Close Sessions to the Right"
+// in the language of msgs.
+func (msgs Messages) TabsCloseRight() string {
+	return Catalog.Format(msgs.locale, "tabsCloseRight", nil)
+}
+
+// SidebarSessionsCount says "{count, plural, one {# session} other {# sessions}}"
+// in the language the app shows.
+func SidebarSessionsCount(count int) string { return In(i18n.Locale()).SidebarSessionsCount(count) }
+
+// SidebarSessionsCount says "{count, plural, one {# session} other {# sessions}}"
+// in the language of msgs.
+func (msgs Messages) SidebarSessionsCount(count int) string {
+	return Catalog.Format(msgs.locale, "sidebarSessionsCount", map[string]any{"count": count})
+}
+
+// ProjectNoSessionsDetail says "Start a session in “{project}” to work here."
+// in the language the app shows.
+func ProjectNoSessionsDetail(project string) string {
+	return In(i18n.Locale()).ProjectNoSessionsDetail(project)
+}
+
+// ProjectNoSessionsDetail says "Start a session in “{project}” to work here."
+// in the language of msgs.
+func (msgs Messages) ProjectNoSessionsDetail(project string) string {
+	return Catalog.Format(msgs.locale, "projectNoSessionsDetail", map[string]any{"project": project})
+}
+
+// CommonClear says "Clear"
+// in the language the app shows.
+func CommonClear() string { return In(i18n.Locale()).CommonClear() }
+
+// CommonClear says "Clear"
+// in the language of msgs.
+func (msgs Messages) CommonClear() string {
+	return Catalog.Format(msgs.locale, "commonClear", nil)
+}
+
+// SidebarDefaultCommandMenu says "Default Command…"
+// in the language the app shows.
+func SidebarDefaultCommandMenu() string { return In(i18n.Locale()).SidebarDefaultCommandMenu() }
+
+// SidebarDefaultCommandMenu says "Default Command…"
+// in the language of msgs.
+func (msgs Messages) SidebarDefaultCommandMenu() string {
+	return Catalog.Format(msgs.locale, "sidebarDefaultCommandMenu", nil)
+}
+
+// SidebarDefaultCommandTip says "Default command: {command}"
+// in the language the app shows.
+func SidebarDefaultCommandTip(command string) string {
+	return In(i18n.Locale()).SidebarDefaultCommandTip(command)
+}
+
+// SidebarDefaultCommandTip says "Default command: {command}"
+// in the language of msgs.
+func (msgs Messages) SidebarDefaultCommandTip(command string) string {
+	return Catalog.Format(msgs.locale, "sidebarDefaultCommandTip", map[string]any{"command": command})
+}
+
+// ProjectCommandTitle says "Default Command for “{name}”"
+// in the language the app shows.
+func ProjectCommandTitle(name string) string { return In(i18n.Locale()).ProjectCommandTitle(name) }
+
+// ProjectCommandTitle says "Default Command for “{name}”"
+// in the language of msgs.
+func (msgs Messages) ProjectCommandTitle(name string) string {
+	return Catalog.Format(msgs.locale, "projectCommandTitle", map[string]any{"name": name})
+}
+
+// ProjectCommandDetail says "Runs when a new session starts in this project. Leave empty to start the default shell."
+// in the language the app shows.
+func ProjectCommandDetail() string { return In(i18n.Locale()).ProjectCommandDetail() }
+
+// ProjectCommandDetail says "Runs when a new session starts in this project. Leave empty to start the default shell."
+// in the language of msgs.
+func (msgs Messages) ProjectCommandDetail() string {
+	return Catalog.Format(msgs.locale, "projectCommandDetail", nil)
+}
+
+// ProjectCommandPlaceholder says "e.g. npm run dev"
+// in the language the app shows.
+func ProjectCommandPlaceholder() string { return In(i18n.Locale()).ProjectCommandPlaceholder() }
+
+// ProjectCommandPlaceholder says "e.g. npm run dev"
+// in the language of msgs.
+func (msgs Messages) ProjectCommandPlaceholder() string {
+	return Catalog.Format(msgs.locale, "projectCommandPlaceholder", nil)
+}
+
+// SidebarDefaultShellMenu says "Default Shell"
+// in the language the app shows.
+func SidebarDefaultShellMenu() string { return In(i18n.Locale()).SidebarDefaultShellMenu() }
+
+// SidebarDefaultShellMenu says "Default Shell"
+// in the language of msgs.
+func (msgs Messages) SidebarDefaultShellMenu() string {
+	return Catalog.Format(msgs.locale, "sidebarDefaultShellMenu", nil)
+}
+
+// SidebarDefaultShellAuto says "Default"
+// in the language the app shows.
+func SidebarDefaultShellAuto() string { return In(i18n.Locale()).SidebarDefaultShellAuto() }
+
+// SidebarDefaultShellAuto says "Default"
+// in the language of msgs.
+func (msgs Messages) SidebarDefaultShellAuto() string {
+	return Catalog.Format(msgs.locale, "sidebarDefaultShellAuto", nil)
+}
+
+// SidebarDefaultShellAutoNamed says "Default ({shell})"
+// in the language the app shows.
+func SidebarDefaultShellAutoNamed(shell string) string {
+	return In(i18n.Locale()).SidebarDefaultShellAutoNamed(shell)
+}
+
+// SidebarDefaultShellAutoNamed says "Default ({shell})"
+// in the language of msgs.
+func (msgs Messages) SidebarDefaultShellAutoNamed(shell string) string {
+	return Catalog.Format(msgs.locale, "sidebarDefaultShellAutoNamed", map[string]any{"shell": shell})
+}
+
+// SidebarDefaultShellTip says "Default shell: {shell}"
+// in the language the app shows.
+func SidebarDefaultShellTip(shell string) string {
+	return In(i18n.Locale()).SidebarDefaultShellTip(shell)
+}
+
+// SidebarDefaultShellTip says "Default shell: {shell}"
+// in the language of msgs.
+func (msgs Messages) SidebarDefaultShellTip(shell string) string {
+	return Catalog.Format(msgs.locale, "sidebarDefaultShellTip", map[string]any{"shell": shell})
+}
+
+// ShellCommandPrompt says "Command Prompt"
+// in the language the app shows.
+func ShellCommandPrompt() string { return In(i18n.Locale()).ShellCommandPrompt() }
+
+// ShellCommandPrompt says "Command Prompt"
+// in the language of msgs.
+func (msgs Messages) ShellCommandPrompt() string {
+	return Catalog.Format(msgs.locale, "shellCommandPrompt", nil)
+}

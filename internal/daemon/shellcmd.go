@@ -4,7 +4,48 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"kero/internal/shell"
 )
+
+// shellSpec describes how to launch a user or per-project shell.
+type shellSpec struct {
+	exe  string // executable passed to startPTY
+	name string // sidebar/pane shell name (e.g. "pwsh", "powershell", "cmd", "Ubuntu", "zsh")
+	wsl  string // non-empty when running a WSL distribution via wsl.exe
+}
+
+// resolveShell resolves a project's shell override, or userShell() when empty.
+func resolveShell(override string) shellSpec {
+	override = strings.TrimSpace(override)
+	if override == "" {
+		sh := userShell()
+		return shellSpec{exe: sh, name: shellName(sh)}
+	}
+	exe, wsl := shell.Resolve(expandHome(override))
+	if wsl != "" {
+		return shellSpec{exe: exe, name: wsl, wsl: wsl}
+	}
+	return shellSpec{exe: exe, name: shellName(exe)}
+}
+
+func shellSpecArgs(spec shellSpec, bin, zdot string, command []string) []string {
+	if spec.wsl != "" {
+		if len(command) == 0 {
+			return []string{"wsl", "-d", spec.wsl}
+		}
+		script := shellJoin("sh", command) + `; exec "${SHELL:-/bin/sh}" -l`
+		return []string{"wsl", "-d", spec.wsl, "--", "sh", "-lc", script}
+	}
+	return shellArgs(spec.exe, bin, zdot, command)
+}
+
+func marksExitSpec(spec shellSpec) bool {
+	if spec.wsl != "" {
+		return false
+	}
+	return marksExit(spec.exe)
+}
 
 // shellName is a shell's name, as the sidebar shows it: "zsh", "pwsh".
 func shellName(shell string) string {

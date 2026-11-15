@@ -137,7 +137,7 @@ func (a *App) view(c *ui.Context) {
 	row.Children(func() {
 		w := a.chrome.sideW
 		side := ui.Row(c).Width(w).Shrink(0).AlignItems(ui.Stretch).ClipX()
-		if h := a.local(); h.conn == connReady && h.cl != nil && !a.prefs.SidebarHidden && !a.pal.open && !a.picker.open && (a.confirm == nil || !a.confirm.open) {
+		if h := a.local(); h.conn == connReady && h.cl != nil && !a.prefs.SidebarHidden && !a.pal.open && !a.picker.open && (a.confirm == nil || !a.confirm.open) && a.wtAsk == nil && a.cmdAsk == nil {
 			if files := side.DroppedFiles(); len(files) > 0 {
 				go a.openProjectDirs(h, h.cl, slices.Clone(files), true)
 			}
@@ -155,6 +155,9 @@ func (a *App) view(c *ui.Context) {
 		main.Children(func() {
 			if shown > 0.01 {
 				a.resizeHandle(c, pal)
+			}
+			if a.set.TopTabs {
+				a.topTabsBar(c, pal, bar, shown)
 			}
 			a.card(c, pal, bar, shown)
 		})
@@ -184,6 +187,7 @@ func (a *App) view(c *ui.Context) {
 	a.pickerView(c, pal)
 	a.confirmView(c, pal)
 	a.worktreeView(c, pal)
+	a.projectCommandView(c, pal)
 	// A preview that showed no more fades in anew next time.
 	if !a.previewShown {
 		a.previewKey = ""
@@ -322,11 +326,16 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 		// This machine's projects first, unlabeled; then each host's,
 		// under its name.
 		if local := a.local(); local.loaded {
-			for _, g := range a.hostGroups(local) {
-				a.groupView(c, pal, g, gi, at, &n)
+			groups := a.hostGroups(local)
+			for _, g := range groups {
+				if a.set.TopTabs {
+					a.projectGroupView(c, pal, g, gi, at, &n)
+				} else {
+					a.groupView(c, pal, g, gi, at, &n)
+				}
 				gi++
 			}
-			if len(a.st.Sessions) == 0 && local.conn == connReady && len(a.hosts) == 1 {
+			if len(a.st.Sessions) == 0 && (!a.set.TopTabs || len(groups) == 0) && local.conn == connReady && len(a.hosts) == 1 {
 				ui.Text(c, locales.SidebarNoSessions()).FontSize(12.5).TextColor(pal.textFaint).Padding(8, 10)
 			}
 		}
@@ -344,7 +353,11 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 			}
 			for i, g := range groups {
 				g.first = i == 0
-				a.groupView(c, pal, g, gi, at, &n)
+				if a.set.TopTabs {
+					a.projectGroupView(c, pal, g, gi, at, &n)
+				} else {
+					a.groupView(c, pal, g, gi, at, &n)
+				}
 				gi++
 			}
 		}
@@ -410,52 +423,9 @@ func (a *App) groupBody(c *ui.Context, pal *palette, g group, gi int, moving boo
 	if hdr.Clicked() && !renaming {
 		a.toggleProject(key)
 	}
-	pointerTooltip(c, hdr, "tip-project-"+key, g.host.shortDir(g.project.Dir))
+	pointerTooltip(c, hdr, "tip-project-"+key, a.projectTooltip(g))
 	hdr.ContextMenu(func(m *ui.Menu) {
-		if m.Item(locales.ActionNewSession()).Chosen() {
-			a.newSessionOn(g.host, id)
-		}
-		label := locales.SidebarCollapse()
-		if collapsed {
-			label = locales.SidebarExpand()
-		}
-		if m.Item(label).Chosen() {
-			a.toggleProject(key)
-		}
-		if m.Item(locales.SessionRename()).Disabled(id == "").Chosen() {
-			a.startProjectRename(id)
-		}
-		a.projectMenu(m, g)
-		m.Separator()
-		// A remote group's menu has its host's, as the host has no header.
-		if g.host.remote() {
-			m.Submenu(g.host.name, func(m *ui.Menu) { a.hostMenu(m, g.host) })
-		}
-		// Close All Sessions ends the sessions the project holds, not the
-		// project itself, asking first as closing the project does: what
-		// runs in them ends with them.
-		if m.Item(locales.SidebarCloseAllSessions()).Disabled(len(g.sessions) == 0).Chosen() {
-			name, count := g.project.Name, len(g.sessions)
-			a.confirm = &confirmation{
-				open:    true,
-				title:   locales.ConfirmCloseAllSessionsTitle(name),
-				detail:  locales.ConfirmCloseAllSessionsDetail(count),
-				action:  locales.SidebarCloseAllSessions(),
-				destroy: true,
-				run:     func() { a.closeAllSessions(g) },
-			}
-		}
-		if m.Item(locales.SidebarCloseProjectMenu()).Disabled(id == "").Chosen() {
-			name, count := g.project.Name, len(g.sessions)
-			a.confirm = &confirmation{
-				open:    true,
-				title:   locales.ConfirmCloseTitle(name),
-				detail:  locales.ConfirmCloseProjectDetail(count),
-				action:  locales.SidebarCloseProject(),
-				destroy: true,
-				run:     func() { a.call(id, "project.close", proto.IDParams{ID: id}, nil) },
-			}
-		}
+		a.projectContextMenu(m, g, true, collapsed)
 	})
 	hdr.Children(func() {
 		if renaming {
@@ -1070,18 +1040,20 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 	// No session: one card, for what the app has to say.
 	card := paned(ui.Column(c).Grow(1).MinHeight(0).Radius(14).Background(pal.card), pal).Clip()
 	card.Children(func() {
-		left := a.chrome.headerPad
-		ui.Row(c).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, left).DragWindow().Children(func() {
-			if shown < 0.5 {
-				ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
-					iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
-					iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
-				})
-			}
-			ui.Text(c, "Kero").FontSize(14).FontWeight(600).TextColor(pal.text)
-			ui.Spacer(c)
-			a.controlsRoom(c, 0)
-		})
+		if !a.set.TopTabs {
+			left := a.chrome.headerPad
+			ui.Row(c).Height(headerH).Shrink(0).AlignItems(ui.Center).Padding(0, 10, 0, left).DragWindow().Children(func() {
+				if shown < 0.5 {
+					ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
+						iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
+						iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
+					})
+				}
+				ui.Text(c, "Kero").FontSize(14).FontWeight(600).TextColor(pal.text)
+				ui.Spacer(c)
+				a.controlsRoom(c, 0)
+			})
+		}
 		ui.Column(c).Grow(1).MinHeight(0).Children(func() {
 			switch {
 			case h.conn == connVersion && h.remote():
@@ -1115,6 +1087,22 @@ func (a *App) message(c *ui.Context, pal *palette, title, detail, action string,
 }
 
 func (a *App) emptyState(c *ui.Context, pal *palette) {
+	if a.set.TopTabs {
+		if g, ok := a.selectedGroup(); ok && g.project.ID != "" && len(g.sessions) == 0 {
+			ui.Column(c).Fill().Center().Gap(0).Padding(24).Children(func() {
+				ui.Box(c).Size(52, 52).Radius(14).Center().Background(pal.chip).TextColor(pal.textMuted).Margin(0, 0, 18, 0).Children(func() {
+					ui.Icon(c, folderIcon).Size(26, 26)
+				})
+				ui.Text(c, g.project.Name).FontSize(19).FontWeight(650).TextColor(pal.text)
+				ui.Text(c, locales.ProjectNoSessionsDetail(g.project.Name)).
+					FontSize(13.5).TextColor(pal.textMuted).MaxWidth(380).TextAlign(ui.Center).LineHeight(1.45).Margin(8, 0, 22, 0)
+				if button(c, "empty-project-new", locales.NewSessionIn(g.project.Name), a.keys("session.new"), true, pal) {
+					a.newSessionOn(g.host, g.project.ID)
+				}
+			})
+			return
+		}
+	}
 	ui.Column(c).Fill().Center().Gap(0).Padding(24).Children(func() {
 		ui.Box(c).Size(52, 52).Radius(14).Center().Background(pal.chip).TextColor(pal.textMuted).Margin(0, 0, 18, 0).Children(func() {
 			ui.Icon(c, terminalIcon).Size(26, 26)
@@ -1131,4 +1119,127 @@ func (a *App) emptyState(c *ui.Context, pal *palette) {
 			}
 		})
 	})
+}
+
+// projectTooltip formats the project's sidebar header tooltip with its directory
+// and, when set, its default shell and default command.
+func (a *App) projectTooltip(g group) string {
+	tip := g.host.shortDir(g.project.Dir)
+	appendLine := func(line string) {
+		if tip != "" {
+			tip += "\n"
+		}
+		tip += line
+	}
+	if g.project.Shell != "" {
+		appendLine(locales.SidebarDefaultShellTip(a.hostShellLabel(g.host, g.project.Shell)))
+	}
+	if g.project.Command != "" {
+		appendLine(locales.SidebarDefaultCommandTip(g.project.Command))
+	}
+	return tip
+}
+
+// projectContextMenu populates the right-click menu shared by standard and
+// top-tabs project headers.
+func (a *App) projectContextMenu(m *ui.Menu, g group, collapsible, collapsed bool) {
+	id, key := g.project.ID, g.key()
+	if m.Item(locales.ActionNewSession()).Chosen() {
+		a.newSessionOn(g.host, id)
+	}
+	if collapsible {
+		label := locales.SidebarCollapse()
+		if collapsed {
+			label = locales.SidebarExpand()
+		}
+		if m.Item(label).Chosen() {
+			a.toggleProject(key)
+		}
+	}
+	if m.Item(locales.SessionRename()).Disabled(id == "").Chosen() {
+		a.startProjectRename(id)
+	}
+	a.projectShellMenu(m, g)
+	cmdItem := m.Item(locales.SidebarDefaultCommandMenu()).Disabled(id == "")
+	if g.project.Command != "" {
+		cmdItem.Checked(true)
+	}
+	if cmdItem.Chosen() {
+		a.startProjectCommand(g.project)
+	}
+	a.projectMenu(m, g)
+	m.Separator()
+	// A remote group's menu has its host's, as the host has no header.
+	if g.host.remote() {
+		m.Submenu(g.host.name, func(m *ui.Menu) { a.hostMenu(m, g.host) })
+	}
+	// Close All Sessions ends the sessions the project holds, not the
+	// project itself, asking first as closing the project does: what
+	// runs in them ends with them.
+	if m.Item(locales.SidebarCloseAllSessions()).Disabled(len(g.sessions) == 0).Chosen() {
+		name, count := g.project.Name, len(g.sessions)
+		a.confirm = &confirmation{
+			open:    true,
+			title:   locales.ConfirmCloseAllSessionsTitle(name),
+			detail:  locales.ConfirmCloseAllSessionsDetail(count),
+			action:  locales.SidebarCloseAllSessions(),
+			destroy: true,
+			run:     func() { a.closeAllSessions(g) },
+		}
+	}
+	if m.Item(locales.SidebarCloseProjectMenu()).Disabled(id == "").Chosen() {
+		name, count := g.project.Name, len(g.sessions)
+		a.confirm = &confirmation{
+			open:    true,
+			title:   locales.ConfirmCloseTitle(name),
+			detail:  locales.ConfirmCloseProjectDetail(count),
+			action:  locales.SidebarCloseProject(),
+			destroy: true,
+			run:     func() { a.call(id, "project.close", proto.IDParams{ID: id}, nil) },
+		}
+	}
+}
+
+func (a *App) projectCommandView(c *ui.Context, pal *palette) {
+	d := a.cmdAsk
+	if d == nil {
+		return
+	}
+	save := false
+	ui.DialogBase(c.Key("project-command"), &d.open, func(backdrop, panel ui.Element) {
+		backdrop.Background(pal.overlay)
+		floating(panel.Width(420).Padding(22).Gap(8).Radius(14).Background(pal.popover), pal).Label(locales.ProjectCommandTitle(d.name))
+		ui.Text(c, locales.ProjectCommandTitle(d.name)).FontSize(15).FontWeight(650).TextColor(pal.text)
+		ui.Text(c, locales.ProjectCommandDetail()).FontSize(13).TextColor(pal.textMuted).LineHeight(1.4)
+		ui.Row(c).Margin(8, 0, 0, 0).Children(func() {
+			in := textField(c, "command", &d.command, locales.ProjectCommandPlaceholder(), 0, pal)
+			in.AutoFocus()
+			if in.Submitted() {
+				save = true
+			}
+		})
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Margin(14, 0, 0, 0).Children(func() {
+			if d.had {
+				if button(c, "clear", locales.CommonClear(), "", false, pal) {
+					d.command = ""
+					save = true
+				}
+			}
+			ui.Spacer(c)
+			if button(c, "cancel", locales.CommonCancel(), "esc", false, pal) {
+				d.open = false
+			}
+			if button(c, "save", locales.CommonSave(), "↩", true, pal) {
+				save = true
+			}
+		})
+	})
+	if save {
+		d.open = false
+		a.setProjectCommand(d.id, d.command)
+	}
+	if !d.open {
+		a.cmdAsk = nil
+		a.focusTerminal()
+	}
 }

@@ -36,6 +36,7 @@ type savedSession struct {
 type savedPane struct {
 	ID      string   `json:"id"`
 	Dir     string   `json:"dir,omitempty"`
+	Shell   string   `json:"shell,omitempty"`
 	Command []string `json:"command,omitempty"`
 	// URL and Title are a browser pane's page.
 	URL     string `json:"url,omitempty"`
@@ -73,7 +74,7 @@ func (d *Daemon) saveState() {
 		ss := savedSession{ID: s.id, Project: s.project, Name: s.name, Created: s.created, Layout: s.layout, Focus: s.focus, Worktree: s.worktree}
 		for _, p := range s.panes {
 			p.mu.Lock()
-			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Command: p.info.Command, URL: p.info.URL,
+			sp := savedPane{ID: p.info.ID, Dir: p.info.Dir, Shell: p.shell, Command: p.info.Command, URL: p.info.URL,
 				Created: p.info.Created, Cols: p.info.Cols, Rows: p.info.Rows}
 			if p.info.Browser() {
 				sp.Title = p.info.Title
@@ -177,13 +178,14 @@ func (d *Daemon) restorePane(sid string, sp savedPane, when string) *pane {
 		return p
 	}
 	p, err := newPane(d, sid, proto.Pane{
-		ID: sp.ID, Dir: sp.Dir, Command: sp.Command, Status: proto.Idle, Since: now,
+		ID: sp.ID, Dir: sp.Dir, Shell: resolveShell(sp.Shell).name, Command: sp.Command, Status: proto.Idle, Since: now,
 		Created: sp.Created, Cols: sp.Cols, Rows: sp.Rows, Restored: true,
 	})
 	if err != nil {
 		d.log.Printf("restoring %s: %v", sp.ID, err)
 		return nil
 	}
+	p.shell = sp.Shell
 	// What the session showed, down to where its cursor was, with the
 	// new shell under it: what a program drew below the cursor, as a
 	// status bar, goes, rather than show under the new shell's

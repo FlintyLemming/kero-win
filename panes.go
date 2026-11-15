@@ -93,17 +93,18 @@ func (a *App) focusTerminal() {
 // panel takes while it shows.
 func (a *App) panes(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, right bool) {
 	multi := len(s.Panes) > 1
+	top := !a.set.TopTabs
 	if z := s.PaneByID(s.Zoomed); z != nil || s.Layout == nil || !multi {
 		p := z
 		if p == nil {
 			p = s.FocusPane()
 		}
 		if p != nil {
-			a.paneCard(c, pal, bar, shown, s, p, true, true, right, multi)
+			a.paneCard(c, pal, bar, shown, s, p, top, true, right, multi)
 		}
 		return
 	}
-	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", true, true, right)
+	a.layoutNode(c, pal, bar, shown, s, s.Layout, "", top, true, right)
 }
 
 func (a *App) layoutNode(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32, s *proto.Session, l *proto.Layout, path string, top, left, right bool) {

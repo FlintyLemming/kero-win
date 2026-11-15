@@ -370,3 +370,21 @@ func TestNewSessionDirectoryFolder(t *testing.T) {
 		t.Errorf("custom with no folder kept as %q", bad.NewSessionDir)
 	}
 }
+
+func TestTopTabsConfig(t *testing.T) {
+	if Default().TopTabs {
+		t.Error("top-tabs should be off by default")
+	}
+	s, probs := parse("top-tabs = true\n")
+	if !s.TopTabs || len(probs) != 0 {
+		t.Fatalf("top-tabs = true: %v, problems %q", s.TopTabs, probs)
+	}
+	out := format(s, "")
+	if !strings.Contains(out, "top-tabs = true") {
+		t.Errorf("formatted config missing top-tabs:\n%s", out)
+	}
+	back, probs := parse(out)
+	if !back.TopTabs || len(probs) != 0 {
+		t.Errorf("round-trip top-tabs: %v, problems %q", back.TopTabs, probs)
+	}
+}

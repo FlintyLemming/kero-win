@@ -594,5 +594,22 @@
   "worktreeRemoveAnyway": "仍然删除",
   "actionQuickTerminal": "快速终端",
   "toastGlobalShortcutFailed": "无法将 {keys} 用于快速终端：{error}",
-  "setShortcutGlobal": "在任何应用中都可用"
+  "setShortcutGlobal": "在任何应用中都可用",
+  "setTopTabs": "顶部会话标签页",
+  "setTopTabsDetail": "侧边栏仅列出项目，并将当前所选项目的会话作为横向标签页显示在顶部。",
+  "tabsCloseOthers": "关闭其他会话",
+  "tabsCloseRight": "关闭右侧会话",
+  "sidebarSessionsCount": "{count} 个会话",
+  "projectNoSessionsDetail": "在“{project}”中启动一个会话以在此工作。",
+  "commonClear": "清除",
+  "sidebarDefaultCommandMenu": "默认命令…",
+  "sidebarDefaultCommandTip": "默认命令：{command}",
+  "projectCommandTitle": "“{name}”的默认命令",
+  "projectCommandDetail": "在该项目中新建会话时运行。留空则启动默认 Shell。",
+  "projectCommandPlaceholder": "例如 npm run dev",
+  "sidebarDefaultShellMenu": "默认 Shell",
+  "sidebarDefaultShellAuto": "默认",
+  "sidebarDefaultShellAutoNamed": "默认 ({shell})",
+  "sidebarDefaultShellTip": "默认 Shell：{shell}",
+  "shellCommandPrompt": "命令提示符"
 }

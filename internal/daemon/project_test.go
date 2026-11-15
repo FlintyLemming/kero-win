@@ -328,3 +328,191 @@ func TestProjectMovePersists(t *testing.T) {
 		t.Errorf("restored order %v, want b a c", got)
 	}
 }
+
+// project.command sets and clears a project's default command, and persists
+// it across kerod restarts.
+func TestProjectCommandPersists(t *testing.T) {
+	d := projectDaemon(t)
+	p, err := createProject(t, d, proto.ProjectParams{Name: "app"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	setCmd := func(id, cmd string) error {
+		raw, err := json.Marshal(proto.ProjectParams{ID: id, Command: cmd})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = d.call(nil, "project.command", raw)
+		return err
+	}
+	if err := setCmd("missing", "claude"); err == nil {
+		t.Fatal("project.command succeeded for unknown project")
+	}
+	if err := setCmd(p.ID, "  npm run dev  "); err != nil {
+		t.Fatal(err)
+	}
+	if got := d.state().Projects[0].Command; got != "npm run dev" {
+		t.Fatalf("command = %q, want %q", got, "npm run dev")
+	}
+	d.saveState()
+	restored := &Daemon{dir: d.dir}
+	restored.viewed.Store(new(string))
+	restored.restore()
+	if got := restored.state().Projects[0].Command; got != "npm run dev" {
+		t.Fatalf("restored command = %q, want %q", got, "npm run dev")
+	}
+	if err := setCmd(p.ID, "   "); err != nil {
+		t.Fatal(err)
+	}
+	if got := d.state().Projects[0].Command; got != "" {
+		t.Fatalf("cleared command = %q, want empty", got)
+	}
+}
+
+// New sessions in a project with a default command start that command unless
+// another command or a browser URL was given.
+func TestProjectDefaultCommandInCreate(t *testing.T) {
+	d := testDaemon(t)
+	d.projects[0].Command = "echo hello"
+
+	s, err := d.create(proto.CreateParams{Project: "pr"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	if got := s.Panes[0].Command; !slices.Equal(got, []string{"echo hello"}) {
+		t.Errorf("default command = %v, want [echo hello]", got)
+	}
+
+	explicit, err := d.create(proto.CreateParams{Project: "pr", Command: []string{"echo", "custom"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(explicit.ID) })
+	if got := explicit.Panes[0].Command; !slices.Equal(got, []string{"echo", "custom"}) {
+		t.Errorf("explicit command = %v, want [echo custom]", got)
+	}
+
+	browser, err := d.create(proto.CreateParams{Project: "pr", URL: "localhost:3000"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(browser.ID) })
+	if len(browser.Panes[0].Command) != 0 || browser.Panes[0].URL != "http://localhost:3000" {
+		t.Errorf("browser pane = %+v, want URL without command", browser.Panes[0])
+	}
+}
+
+// project.shell sets and clears a project's default shell, and persists
+// it across kerod restarts.
+func TestProjectShellPersists(t *testing.T) {
+	d := projectDaemon(t)
+	p, err := createProject(t, d, proto.ProjectParams{Name: "app"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	setShell := func(id, sh string) error {
+		raw, err := json.Marshal(proto.ProjectParams{ID: id, Shell: sh})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = d.call(nil, "project.shell", raw)
+		return err
+	}
+	if err := setShell("missing", "cmd"); err == nil {
+		t.Fatal("project.shell succeeded for unknown project")
+	}
+	if err := setShell(p.ID, "  wsl:Ubuntu  "); err != nil {
+		t.Fatal(err)
+	}
+	if got := d.state().Projects[0].Shell; got != "wsl:Ubuntu" {
+		t.Fatalf("shell = %q, want %q", got, "wsl:Ubuntu")
+	}
+	d.saveState()
+	restored := &Daemon{dir: d.dir}
+	restored.viewed.Store(new(string))
+	restored.restore()
+	if got := restored.state().Projects[0].Shell; got != "wsl:Ubuntu" {
+		t.Fatalf("restored shell = %q, want %q", got, "wsl:Ubuntu")
+	}
+	if err := setShell(p.ID, "   "); err != nil {
+		t.Fatal(err)
+	}
+	if got := d.state().Projects[0].Shell; got != "" {
+		t.Fatalf("cleared shell = %q, want empty", got)
+	}
+}
+
+func TestHostShellsRPC(t *testing.T) {
+	d := projectDaemon(t)
+	res, err := d.call(nil, "host.shells", nil)
+	if err != nil {
+		t.Fatalf("host.shells error: %v", err)
+	}
+	hs, ok := res.(proto.HostShells)
+	if !ok {
+		t.Fatalf("host.shells result = %T, want proto.HostShells", res)
+	}
+	if len(hs.Shells) == 0 {
+		t.Fatal("host.shells returned empty Shells")
+	}
+}
+
+func TestResolveShellAndArgs(t *testing.T) {
+	wslSpec := resolveShell("wsl:Ubuntu")
+	if wslSpec.wsl != "Ubuntu" || wslSpec.name != "Ubuntu" {
+		t.Fatalf("resolveShell(wsl:Ubuntu) = %+v", wslSpec)
+	}
+	if args := shellSpecArgs(wslSpec, "", "", nil); !slices.Equal(args, []string{"wsl", "-d", "Ubuntu"}) {
+		t.Fatalf("wsl args = %v, want [wsl -d Ubuntu]", args)
+	}
+	if args := shellSpecArgs(wslSpec, "", "", []string{"echo", "hi"}); len(args) < 4 || args[2] != "Ubuntu" || args[3] != "--" {
+		t.Fatalf("wsl command args = %v", args)
+	}
+	if marksExitSpec(wslSpec) {
+		t.Fatal("marksExitSpec(wsl) = true, want false")
+	}
+
+	if runtime.GOOS == "windows" {
+		cmdSpec := resolveShell("cmd")
+		if cmdSpec.name != "cmd" || cmdSpec.wsl != "" {
+			t.Fatalf("resolveShell(cmd) = %+v", cmdSpec)
+		}
+		if args := shellSpecArgs(cmdSpec, "", "", nil); !slices.Equal(args, []string{"cmd"}) {
+			t.Fatalf("cmd args = %v", args)
+		}
+		psSpec := resolveShell("powershell")
+		if psSpec.name != "powershell" {
+			t.Fatalf("resolveShell(powershell) = %+v", psSpec)
+		}
+	}
+}
+
+// New sessions and splits in a project with a default shell launch that shell.
+func TestProjectDefaultShellInCreateAndSplit(t *testing.T) {
+	d := testDaemon(t)
+	wantShell := "sh"
+	wantPaneShell := "sh"
+	if runtime.GOOS == "windows" {
+		wantShell = "cmd"
+		wantPaneShell = "cmd"
+	}
+	d.projects[0].Shell = wantShell
+
+	s, err := d.create(proto.CreateParams{Project: "pr"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	if got := s.Panes[0].Shell; got != wantPaneShell {
+		t.Fatalf("created pane shell = %q, want %q", got, wantPaneShell)
+	}
+
+	split, err := d.create(proto.CreateParams{Split: s.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(split.Panes) != 2 || split.Panes[1].Shell != wantPaneShell {
+		t.Fatalf("split pane shell = %q, want %q", split.Panes[len(split.Panes)-1].Shell, wantPaneShell)
+	}
+}
