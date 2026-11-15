@@ -33,12 +33,21 @@
 - **左侧项目管理**：开启后侧边栏仅列出项目行，支持项目汇总状态、会话数显示、`Cmd/Ctrl+1..9` 快速切换项目、拖拽排序、右键菜单及记忆各项目上次打开的会话；空项目也会保持选中并提示新建会话。
 - **顶部横向标签栏**：在主区域上方横向展示当前项目的会话标签（支持横向滚动、悬停关闭、双击重命名、`+` 新建会话、水平拖拽重排顺序、右键关闭其他/右侧会话，`Ctrl+Tab` 在当前项目标签内切换），并自动协调侧边栏折叠按钮与系统窗口控制按钮位置。
 
+<img width="914" height="321" alt="图片" src="https://github.com/user-attachments/assets/9b70e51c-2180-4022-8a7f-02435ce60fef" />
+
 ### 4. 项目级右键默认 Shell 与默认命令（`c4c5218`）
 
 在侧边栏项目右键菜单（标准模式与顶部标签页模式共用）中新增项目级启动配置，并随 `kerod` 状态持久化：
 
 - **默认 Shell（Default Shell）子菜单**：通过 `host.shells` 与 `internal/shell` 自动探测主机可用终端（Windows 下支持 PowerShell 7 / `pwsh`、Windows PowerShell、命令提示符 `cmd`、已安装的 WSL 发行版如 `Ubuntu`、Git Bash；Unix 下列出系统可用 Shell），可通过 `project.shell` 为每个项目单独指定默认 Shell 或切回“自动（跟随主机默认）”。
+
+  <img width="715" height="316" alt="图片" src="https://github.com/user-attachments/assets/cf4c37b4-9993-44e9-8675-b29ae85afa69" />
+  
 - **默认命令（Default Command…）**：通过 `project.command` 弹窗为指定项目设置创建新会话时自动执行的启动命令，并在项目 Tooltip 中展示当前配置。
+
+  <img width="418" height="298" alt="图片" src="https://github.com/user-attachments/assets/5ba42b63-08ab-4f13-a406-5cdfb163a421" />
+
+  <img width="736" height="376" alt="图片" src="https://github.com/user-attachments/assets/ada3a071-8766-491e-b0c6-b91e2f70131e" />
 
 ### 5. Windows 专项适配
 
