@@ -4,7 +4,7 @@
 
 - **上游仓库（`Upstream`）**：`https://github.com/egoist/kero`
 - **自用分支（`main`）**：在跟踪上游代码的基础上维护本地定制补丁，定期手动同步 `Upstream/main`
-- **当前版本**：`2.1.35-patch.2026111518`（基于上游 `2.1.35` / commit `09eb1d4`）
+- **当前版本**：`2.1.35-patch.2026111520`（基于上游 `2.1.35` / commit `09eb1d4`）
 
 详细改动明细、涉及文件与上游同步流程见 [修改台账（PATCHES.md）](PATCHES.md)。
 
