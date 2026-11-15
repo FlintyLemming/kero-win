@@ -35,6 +35,7 @@
 | P001 | 已应用 | 2026-11-13 | `3b36bed` | 功能精简 | 移除全部 AI / Coding Agent 功能，还原为通用终端 |
 | P002 | 已应用 | 2026-11-15 | `ee669f1` | 仓库治理 | 配置 `Upstream`、更新 `README.md`、建立台账 `PATCHES.md`、设定 `patch` 版本规则 |
 | P003 | 已应用 | 2026-11-15 | `c4c5218` | UI 与项目配置 | 恢复 1.x 风格项目侧边栏 + 顶部横向标签页（`top-tabs`），新增项目级默认 Shell 与默认命令 |
+| P004 | 已应用 | 2026-11-15 | 本地工作区 | UI 与交互 | 为顶部会话标签页增加鼠标中键关闭功能 |
 
 ---
 
@@ -98,6 +99,17 @@
 - **同步上游时的冲突处理原则**：
   - `tabs.go`、`tabs_test.go`、`project_shell.go`、`internal/daemon/shellcmd.go`、`internal/shell/list*.go` 为独立新增文件，仅需随上游接口小幅适配；
   - `view.go`、`panes.go`、`side.go`、`app.go`、`hosts.go`、`settings_view.go` 及 `internal/daemon/*` 合并冲突时，保留上游新功能并保持 `a.set.TopTabs` 分支以及 `Project.Shell` / `Project.Command` 字段的持久化路径。
+
+### P004：顶部会话标签页支持鼠标中键关闭
+
+- **日期**：2026-11-15
+- **目的**：在开启顶部横向标签页（`top-tabs`）时，支持使用鼠标中键直接关闭任意会话标签页（不切换当前激活标签与终端焦点，并沿用 `ConfirmClose` 与 Worktree 关闭确认）。
+- **改动清单**：
+  - `app.go`、`view.go`：维护并每帧清理 `tabMiddleClose` 状态；
+  - `tabs.go`（`sessionTabItem`）：通过 `HandleInput` 捕获中键按下与抬起（`ev.Button == 2`），仅在非重命名、非拖拽且指针仍悬停在目标标签上释放时触发 `closeSession(sid, true)`；
+  - `tabs_test.go`：新增 `TestTopTabsMiddleClickClose` 覆盖中键关闭、拖出取消、`CancelPress`、重命名中忽略及 `ConfirmClose` 确认逻辑。
+- **同步上游时的冲突处理原则**：
+  - `tabs.go` 与 `tabs_test.go` 为独立新增文件；合并 `app.go` 与 `view.go` 时保留 `tabMiddleClose` 字段及每帧清理逻辑即可。
 
 ---
 

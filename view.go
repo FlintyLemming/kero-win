@@ -199,6 +199,7 @@ func (a *App) view(c *ui.Context) {
 		a.peek = peek{}
 	}
 	a.peek.shown = false
+	a.tabMiddleClose = ""
 	a.backupEdits(c)
 	if later := a.later; len(later) > 0 {
 		a.later = nil

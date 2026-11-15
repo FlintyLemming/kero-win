@@ -131,6 +131,7 @@ type App struct {
 	projectSession  map[string]string // last selected session id by project group key
 	tabScroll       ui.ScrollState    // horizontal scroll state for the top session tabs
 	tabMove         tabMove           // the session tab dragged horizontally
+	tabMiddleClose  string            // session id pending middle-click close check
 	revealTab       string            // session id whose tab should scroll into view
 
 	renameFrames int

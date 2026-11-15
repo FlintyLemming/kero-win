@@ -441,6 +441,27 @@ func (a *App) sessionTabItem(c *ui.Context, pal *palette, g group, s *proto.Sess
 			tab.ScrollIntoView()
 		}
 		hovered := tab.Hovered() && a.tabMove.id == ""
+		if a.tabMiddleClose == sid {
+			a.tabMiddleClose = ""
+			if hovered && !renaming {
+				a.defer_(func() { a.closeSession(sid, true) })
+			}
+		}
+		tab.HandleInput(func(ev ui.InputEvent) bool {
+			if ev.Button != 2 {
+				return false
+			}
+			switch ev.Kind {
+			case ui.InputPointerDown:
+				return !renaming && a.tabMove.id == ""
+			case ui.InputPointerUp:
+				if !ev.Canceled && !renaming {
+					a.tabMiddleClose = sid
+				}
+				return true
+			}
+			return false
+		})
 		tab.Border(1, ui.Transparent)
 		bg := ui.Transparent
 		switch {

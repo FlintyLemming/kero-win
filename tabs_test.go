@@ -303,3 +303,122 @@ func TestTopTabsDragReorder(t *testing.T) {
 		t.Fatal("dragging tab did not send move RPC")
 	}
 }
+
+func TestTopTabsMiddleClickClose(t *testing.T) {
+	a := topTabsTestApp(t)
+	a.st.Sessions[0].Process = ""
+	a.st.Sessions[0].Status = proto.Idle
+	a.st.Sessions[1].Process = ""
+	a.st.Sessions[1].Status = proto.Idle
+	closed := make(chan string, 4)
+	cl, stop := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method == "close" {
+			var p proto.CloseParams
+			_ = json.Unmarshal(raw, &p)
+			closed <- p.ID
+		}
+		return nil, nil
+	})
+	a.local().cl = cl
+	defer stop()
+
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+
+	tab1, ok1 := tt.Find("one")
+	tab2, ok2 := tt.Find("two")
+	if !ok1 || !ok2 {
+		t.Fatalf("missing tabs: one=%v two=%v", ok1, ok2)
+	}
+
+	// Dragging off the tab before releasing middle button does not close it.
+	tt.PressButton(2, tab2.X+tab2.W/2, tab2.Y+tab2.H/2)
+	tt.Frame()
+	tt.Move(tab2.X+tab2.W/2, tab2.Y+tab2.H+40)
+	tt.ReleaseButton(2, tab2.X+tab2.W/2, tab2.Y+tab2.H+40)
+	tt.Frame()
+	select {
+	case id := <-closed:
+		t.Fatalf("releasing outside tab closed %q", id)
+	default:
+	}
+
+	// Canceling a middle press does not close the tab.
+	tt.PressButton(2, tab2.X+tab2.W/2, tab2.Y+tab2.H/2)
+	tt.Frame()
+	tt.CancelPress()
+	tt.Frame()
+	select {
+	case id := <-closed:
+		t.Fatalf("canceled middle press closed %q", id)
+	default:
+	}
+
+	// Middle-clicking while renaming does not close the tab.
+	a.startRename("s2")
+	tt.Frame()
+	tt.PressButton(2, tab2.X+tab2.W/2, tab2.Y+tab2.H/2)
+	tt.ReleaseButton(2, tab2.X+tab2.W/2, tab2.Y+tab2.H/2)
+	tt.Frame()
+	select {
+	case id := <-closed:
+		t.Fatalf("middle-clicking renaming tab closed %q", id)
+	default:
+	}
+	a.renaming = ""
+	tt.Frame()
+
+	// Middle-clicking an inactive tab closes it without changing a.selected.
+	tt.PressButton(2, tab2.X+tab2.W/2, tab2.Y+tab2.H/2)
+	tt.ReleaseButton(2, tab2.X+tab2.W/2, tab2.Y+tab2.H/2)
+	tt.Frame()
+	select {
+	case id := <-closed:
+		if id != "s2" {
+			t.Fatalf("closed = %q, want s2", id)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("middle-clicking inactive tab did not close it")
+	}
+	if a.selected != "s1" {
+		t.Fatalf("selected = %q, want s1", a.selected)
+	}
+
+	// Middle-clicking a busy tab when ConfirmClose is enabled opens confirmation.
+	a.set.ConfirmClose = true
+	a.st.Sessions[0].Process = "vim"
+	a.st.Sessions[0].Status = proto.Working
+	tt.Frame()
+	tab1, ok1 = tt.Find("one")
+	if !ok1 {
+		t.Fatal("missing tab one")
+	}
+	tt.PressButton(2, tab1.X+tab1.W/2, tab1.Y+tab1.H/2)
+	tt.ReleaseButton(2, tab1.X+tab1.W/2, tab1.Y+tab1.H/2)
+	tt.Frame()
+	if a.confirm == nil || !a.confirm.open {
+		t.Fatal("middle-clicking busy tab did not open confirmation dialog")
+	}
+	select {
+	case id := <-closed:
+		t.Fatalf("busy tab closed without confirmation: %q", id)
+	default:
+	}
+	a.confirm = nil
+
+	// Middle-clicking a non-busy active tab closes it immediately.
+	a.st.Sessions[0].Process = ""
+	a.st.Sessions[0].Status = proto.Idle
+	tt.Frame()
+	tt.PressButton(2, tab1.X+tab1.W/2, tab1.Y+tab1.H/2)
+	tt.ReleaseButton(2, tab1.X+tab1.W/2, tab1.Y+tab1.H/2)
+	tt.Frame()
+	select {
+	case id := <-closed:
+		if id != "s1" {
+			t.Fatalf("closed = %q, want s1", id)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("middle-clicking active tab did not close it")
+	}
+}
