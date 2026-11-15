@@ -89,6 +89,9 @@ type App struct {
 	tray    *mygo.Tray // the icon in the menu bar or notification area, while it shows
 	awake   awakeHold  // keeps the computer from sleeping, as Keep computer awake asks
 
+	testWin    windowControlTarget // test double for main window controls when win is nil
+	testSetWin windowControlTarget // test double for settings window controls when setWin is nil
+
 	// hosts are the kerods the app shows, this machine's first; st is
 	// what they hold, each host's sessions and projects after the one's
 	// before, and owner the host of each session, pane and project.
@@ -1248,6 +1251,26 @@ func (a *App) newSessionOn(h *host, projectID string) {
 	}
 	if p.Project == "" && len(a.projectsOf(h)) == 0 && a.set.NewSessionDir != "custom" {
 		p.Dir = home
+	}
+	a.create(h, p, "")
+}
+
+// newSessionWithShell starts a session on h in projectID with shellID,
+// ignoring global and workspace default folder and command settings.
+func (a *App) newSessionWithShell(h *host, projectID, shellID string) {
+	if h == nil || h.cl == nil {
+		return
+	}
+	p := proto.CreateParams{
+		Project:    projectID,
+		Shell:      strings.TrimSpace(shellID),
+		NoDefaults: true,
+	}
+	if cur := a.session(a.selected); cur != nil && a.hostOf(cur.ID) == h {
+		if projectID == "" || cur.Project == projectID {
+			p.Project, p.After = cur.Project, cur.ID
+		}
+		p.Cols, p.Rows = cur.Cols, cur.Rows
 	}
 	a.create(h, p, "")
 }

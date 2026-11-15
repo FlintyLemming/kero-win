@@ -213,23 +213,26 @@ func (d *Daemon) create(p proto.CreateParams) (proto.Session, error) {
 	}
 	d.mu.Lock()
 	project := d.projectFor(p.Project, dir)
-	var projectCmd, projectShell string
+	var projectDir, projectCmd, projectShell string
 	for _, pr := range d.projects {
 		if pr.ID == project {
-			if dir == "" {
-				dir = pr.Dir
-			}
+			projectDir = pr.Dir
 			projectCmd = pr.Command
 			projectShell = pr.Shell
 		}
 	}
 	d.mu.Unlock()
-	if p.URL == "" {
-		if len(p.Command) == 0 && projectCmd != "" {
-			p.Command = []string{projectCmd}
+	if !p.NoDefaults {
+		if dir == "" {
+			dir = projectDir
 		}
-		if p.Shell == "" && projectShell != "" {
-			p.Shell = projectShell
+		if p.URL == "" {
+			if len(p.Command) == 0 && projectCmd != "" {
+				p.Command = []string{projectCmd}
+			}
+			if p.Shell == "" && projectShell != "" {
+				p.Shell = projectShell
+			}
 		}
 	}
 	var wt *proto.Worktree

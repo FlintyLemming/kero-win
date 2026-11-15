@@ -311,12 +311,15 @@ func (a *App) settingsView(c *ui.Context) {
 							})
 						}
 						ui.Spacer(c)
-						windowControls(c, pal, a.setWin)
+						if showControls && resolveWindowTarget(a.setWin, a.testSetWin) != nil {
+							ui.Box(c.Key("controls-room")).Width(controlsW + 6).Shrink(0)
+						}
 					})
 				})
 			})
 		})
 	})
+	a.settingsControls(c, pal)
 	if a.ss.confirm != nil {
 		confirmDialog(c, pal, &a.ss.confirm)
 	}

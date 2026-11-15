@@ -161,3 +161,37 @@ func (a *App) setProjectShell(id, sh string) {
 		}
 	}
 }
+
+// newTabShellMenu attaches a right-click context menu to btn that lets the user
+// launch a new tab with a chosen shell without applying default folder or
+// default command settings.
+func (a *App) newTabShellMenu(btn ui.Element, h *host, projectID string) {
+	btn.ContextMenu(func(m *ui.Menu) {
+		if h == nil {
+			h = a.local()
+		}
+		ready := h != nil && h.cl != nil
+		if h != nil && h.remote() && h.cl != nil && !h.shellsLoaded && !h.shellsLoading {
+			a.fetchShells(h)
+		}
+		opts, _ := a.hostShellOptions(h)
+		shown := make(map[string]bool, len(opts))
+		for _, opt := range opts {
+			id := opt.ID
+			shown[id] = true
+			if opt.Path != "" {
+				shown[strings.ToLower(opt.Path)] = true
+			}
+			if m.Item(shellOptionLabel(opt)).ID(id).Disabled(!ready).Chosen() {
+				a.newSessionWithShell(h, projectID, id)
+			}
+		}
+		if h != nil && !h.remote() {
+			if sh := strings.TrimSpace(a.set.Shell); sh != "" && !shown[sh] && !shown[strings.ToLower(sh)] {
+				if m.Item(a.hostShellLabel(h, sh)).ID(sh).Disabled(!ready).Chosen() {
+					a.newSessionWithShell(h, projectID, sh)
+				}
+			}
+		}
+	})
+}

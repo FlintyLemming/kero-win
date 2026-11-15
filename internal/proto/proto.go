@@ -657,6 +657,9 @@ type (
 		Shell   string   `json:"shell,omitempty"`
 		Command []string `json:"command,omitempty"`
 		Env     []string `json:"env,omitempty"`
+		// NoDefaults skips the project's default folder, command, and shell
+		// fallbacks when creating a session.
+		NoDefaults bool `json:"noDefaults,omitempty"`
 		// URL makes a browser pane showing it, instead of a shell.
 		URL   string `json:"url,omitempty"`
 		After string `json:"after,omitempty"` // put it after this session

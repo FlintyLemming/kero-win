@@ -422,3 +422,117 @@ func TestTopTabsMiddleClickClose(t *testing.T) {
 		t.Fatal("middle-clicking active tab did not close it")
 	}
 }
+
+func TestTopTabsNewTabRightClickShellMenu(t *testing.T) {
+	a := topTabsTestApp(t)
+	a.st.Projects[0].Command = "npm run dev"
+	a.st.Projects[0].Shell = "pwsh"
+	a.st.Projects = append(a.st.Projects, proto.Project{ID: "p3", Name: "EmptyProj", Dir: "/code/empty", Command: "vite", Shell: "pwsh"})
+	a.owner["p3"] = a.local()
+	a.st.Sessions[0].Dir = "/code/alpha/sub"
+	a.st.Sessions[0].Panes[0].Dir = "/code/alpha/sub"
+
+	customDir := t.TempDir()
+	a.set.NewSessionDir = "custom"
+	a.set.NewSessionPath = customDir
+	a.set.Shell = "/custom/fish"
+
+	a.local().shellsLoaded = true
+	a.local().shells = []proto.ShellOption{
+		{ID: "pwsh", Name: "PowerShell", Kind: "pwsh"},
+		{ID: "cmd", Name: "Command Prompt", Kind: "cmd"},
+		{ID: "wsl:Ubuntu", Name: "Ubuntu", Kind: "wsl"},
+	}
+
+	created := make(chan proto.CreateParams, 4)
+	cl, stop := projectClient(t, func(method string, raw json.RawMessage) (any, error) {
+		if method == "create" {
+			var p proto.CreateParams
+			_ = json.Unmarshal(raw, &p)
+			created <- p
+			return proto.Session{ID: "s-new-" + p.Shell, Project: p.Project, Name: p.Shell}, nil
+		}
+		return nil, nil
+	})
+	a.local().conn = connReady
+	a.local().cl = cl
+	defer stop()
+
+	tt := ui.NewTester(a.view, 1100, 640)
+	tt.Frame()
+
+	newTabLabel := a.tip(locales.ActionNewSession(), "session.new")
+
+	// Left-click keeps standard new-tab behavior (applying NewSessionDir).
+	if err := tt.Click(newTabLabel); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	select {
+	case p := <-created:
+		if p.Project != "p1" || p.NoDefaults || p.Dir != customDir {
+			t.Fatalf("left-click create = %+v, want Project=p1 NoDefaults=false Dir=%q", p, customDir)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("left-clicking new-tab + did not create a session")
+	}
+
+	// Re-select s1 and set NewSessionDir = "current", then right-click + and choose Ubuntu.
+	a.selectSession("s1")
+	a.set.NewSessionDir = "current"
+	tt.Frame()
+
+	if err := tt.RightClick(newTabLabel); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("Ubuntu"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	select {
+	case p := <-created:
+		if p.Project != "p1" || p.After != "s1" || p.Shell != "wsl:Ubuntu" || !p.NoDefaults || p.Dir != "" || len(p.Command) != 0 {
+			t.Fatalf("right-click Ubuntu create = %+v, want Project=p1 After=s1 Shell=wsl:Ubuntu NoDefaults=true Dir=\"\" Command=nil", p)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("right-click Ubuntu did not call create")
+	}
+
+	// Right-click + and choose Command Prompt (localized label) in an empty workspace.
+	if err := tt.Click("EmptyProj"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.RightClick(newTabLabel); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem(locales.ShellCommandPrompt()); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	select {
+	case p := <-created:
+		if p.Project != "p3" || p.Shell != "cmd" || !p.NoDefaults || p.Dir != "" || len(p.Command) != 0 {
+			t.Fatalf("empty workspace cmd create = %+v, want Project=p3 Shell=cmd NoDefaults=true Dir=\"\" Command=nil", p)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("right-click cmd in empty workspace did not call create")
+	}
+
+	// Custom configured shell (not in host shells list) is also selectable.
+	if err := tt.RightClick(newTabLabel); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.ChooseMenuItem("fish"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	select {
+	case p := <-created:
+		if p.Project != "p3" || p.Shell != "/custom/fish" || !p.NoDefaults || p.Dir != "" {
+			t.Fatalf("custom shell create = %+v, want Project=p3 Shell=/custom/fish NoDefaults=true Dir=\"\"", p)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("right-click custom shell did not call create")
+	}
+}

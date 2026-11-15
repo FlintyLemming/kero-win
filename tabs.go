@@ -391,13 +391,15 @@ func (a *App) topTabsBar(c *ui.Context, pal *palette, bar ui.TitleBar, shown flo
 					a.sessionTabItem(c, pal, g, s, i, at)
 				}
 			})
-			iconButton(c, "new-tab", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() {
+			btn := iconButton(c, "new-tab", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() {
 				a.newSessionOn(g.host, g.project.ID)
 			})
+			a.newTabShellMenu(btn, g.host, g.project.ID)
 		} else {
-			iconButton(c, "new-tab", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() {
+			btn := iconButton(c, "new-tab", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() {
 				a.newSession("")
 			})
+			a.newTabShellMenu(btn, a.selectedHost(), "")
 		}
 		ui.Box(c.Key("drag")).Grow(1).MinWidth(12).AlignSelf(ui.Stretch).DragWindow()
 		if a.workSession() != nil {

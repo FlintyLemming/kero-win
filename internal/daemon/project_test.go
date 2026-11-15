@@ -548,3 +548,38 @@ func TestProjectDefaultShellInCreateAndSplit(t *testing.T) {
 		t.Fatalf("split pane shell = %q, want %q", split.Panes[len(split.Panes)-1].Shell, wantPaneShell)
 	}
 }
+
+// Creating a session with NoDefaults skips the workspace's default folder,
+// default command, and default shell fallbacks.
+func TestCreateNoDefaultsSkipsWorkspaceDefaults(t *testing.T) {
+	d := testDaemon(t)
+	projDir := d.projects[0].Dir
+	d.projects[0].Command = "echo hello"
+	wantShell, otherShell := "sh", "bash"
+	if runtime.GOOS == "windows" {
+		wantShell, otherShell = "cmd", "powershell"
+	}
+	d.projects[0].Shell = otherShell
+
+	s, err := d.create(proto.CreateParams{
+		Project:    "pr",
+		Shell:      wantShell,
+		NoDefaults: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { d.removeSession(s.ID) })
+	if s.Project != "pr" {
+		t.Fatalf("project = %q, want pr", s.Project)
+	}
+	if got := s.Panes[0].Shell; got != wantShell {
+		t.Fatalf("pane shell = %q, want %q", got, wantShell)
+	}
+	if got := s.Panes[0].Command; len(got) != 0 {
+		t.Fatalf("pane command = %v, want empty", got)
+	}
+	if got := s.Panes[0].Dir; got == projDir || got != proto.Home() {
+		t.Fatalf("pane dir = %q, want home %q (and not project dir %q)", got, proto.Home(), projDir)
+	}
+}

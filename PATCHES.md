@@ -37,7 +37,9 @@
 | P003 | 已应用 | 2026-11-15 | `c4c5218` | UI 与项目配置 | 恢复 1.x 风格项目侧边栏 + 顶部横向标签页（`top-tabs`），新增项目级默认 Shell 与默认命令 |
 | P004 | 已应用 | 2026-11-15 | `b057a97` | UI 与交互 | 为顶部会话标签页增加鼠标中键关闭功能 |
 | P005 | 已应用 | 2026-11-15 | `ee6979f` | 更新源与 CI/CD | 更新源与公钥切换到 `FlintyLemming/kero-win`；发布改为纯手动 Windows 桌面端；CI/测试限定 Windows 并修复 Windows 测试兼容性 |
-| P006 | 已应用 | 2026-11-15 | 待提交 | UI 与工作区管理 | 左上角 `+` 改为新建工作区弹窗（支持无目录创建、Shell/命令预配置），全量统一 Workspace 术语 |
+| P006 | 已应用 | 2026-11-15 | `e775b2f` | UI 与工作区管理 | 左上角 `+` 改为新建工作区弹窗（支持无目录创建、Shell/命令预配置），全量统一 Workspace 术语 |
+| P007 | 已应用 | 2026-11-15 | 待提交 | Windows UI 与交互 | 最大化或全屏时将主窗口与设置窗口关闭按钮热区延伸至最右上角盲点 |
+| P008 | 已应用 | 2026-11-15 | 待提交 | UI 与会话创建 | Workspace 顶部标签栏右键 `+` 支持选择 Shell 新建标签页，且不应用默认文件夹与默认命令 |
 
 ---
 
@@ -156,6 +158,38 @@
 - **同步上游时的冲突处理原则**：
   - `workspace.go` 与 `workspace_test.go` 为独立新增文件，合入上游后按需适配内部接口即可；
   - 合并 `view.go`、`panes.go`、`picker.go`、`actions.go`、`internal/actions/actions.go`、`internal/daemon/rpc.go` 与 `locales/*.json` 时，保留左上角 `+` 的 `project.new` 绑定、`pickFolderOn` 回调、`project.create` 的 `Command`/`Shell` 字段保存及 `locales` 中的 Workspace 文案，并用 `go tool mygo generate` 重新生成 `locales/catalog_gen.go`。
+
+### P007：最大化 / 全屏时右上角盲点关闭窗口
+
+- **日期**：2026-11-15
+- **目的**：在 Windows 等自绘窗口控制按钮（`showControls`）环境下，当窗口最大化或进入全屏时，遵循 Fitts's Law 将右上角关闭按钮的点击/悬停热区延伸至窗口最右上角边缘（`Top(0)`、`Right(0)`），使鼠标直接甩到最右上角盲点即可高亮并点击关闭窗口。
+- **改动清单**：
+  1. **通用角标控制栏布局（`platform.go`、`app.go`、`side.go`）**：
+     - 抽象 `windowControlTarget` 接口与 `cornerControls` 布局辅助函数；在 `IsMaximized() || IsFullScreen()` 时将控制栏锚定到 `Right(0).Top(0)`，通过 `Margin` 保持最小化/最大化按钮与原有位置完全一致，同时将 `close-window` 按钮热区扩展到最右上角并通过 `Draw` 保留原 `28×26`、`Radius(6)` 悬停红底视觉；
+     - 在 `App` 增加仅测试使用的 `testWin` / `testSetWin` 替身字段并统一通过 `resolveWindowTarget` 解析。
+  2. **设置窗口同步支持（`settings_view.go`）**：
+     - 将设置窗口控制按钮从被 `card.Clip()` 裁剪的卡片标题栏内移至与主窗口一致的顶层角落覆盖层（`settingsControls`），并在原标题栏右侧保留 `controlsW + 6` 占位宽度，使设置窗口在最大化或全屏时同样支持右上角盲点关闭。
+  3. **测试（`platform_test.go`）**：
+     - 新增 `TestCornerCloseButton`（覆盖 `TopTabs` 开/关与右侧边栏开/关的 4 种组合，验证普通窗口不误触、最大化/全屏最右上角悬停高亮与点击/滑动释放/双击关闭、不溢出外角背景及最小化/还原按钮正常）与 `TestSettingsCornerCloseButton`。
+- **同步上游时的冲突处理原则**：
+  - 合并 `platform.go`、`settings_view.go`、`side.go` 时，保留 `cornerControls`、`settingsControls` 及设置页卡片外部控件层（及标题栏占位），若上游调整 `barMid`、`cardGap` 或 `controlButtons` 尺寸需同步更新对应常量。
+
+### P008：Workspace 顶部标签栏右键 `+` 选择 Shell 新建标签页
+
+- **日期**：2026-11-15
+- **目的**：在 Workspace 顶部标签栏中，保留左键点击 `+` 使用默认设置新建标签页的同时，支持右键 `+` 菜单选择特定 Shell 新建标签页，并显式跳过任何默认文件夹与默认命令设置。
+- **改动清单**：
+  1. **协议与守护进程（`internal/proto/proto.go`、`internal/daemon/sessions.go`）**：
+     - 在 `proto.CreateParams` 新增可选字段 `NoDefaults bool`（`json:"noDefaults,omitempty"`），保持协议版本兼容；
+     - 在 `Daemon.create` 中，当 `p.NoDefaults` 为 `true` 时跳过工作区默认目录（`pr.Dir`）、默认命令（`pr.Command`）与默认 Shell（`pr.Shell`）回退，令 `Dir` 为空以由 `pane.start` 回退至 `proto.Home()`。
+  2. **客户端创建与右键菜单（`app.go`、`view.go`、`project_shell.go`、`tabs.go`）**：
+     - 在 `App` 新增 `newSessionWithShell(h *host, projectID, shellID string)`，绕过 `NewSessionDir` / `NewSessionPath` 等默认目录解析，以 `NoDefaults: true` 与指定 `Shell` 在当前主机的当前工作区新建会话（同主机有活动会话时沿用 `After` / `Cols` / `Rows`）；
+     - `iconButton` 返回 `ui.Element`；在 `project_shell.go` 新增 `App.newTabShellMenu`，列出目标主机可用 Shell（`hostShellOptions`）及未重复的本地自定义 `a.set.Shell`，并在 `tabs.go` 顶部标签栏的 `new-tab` `+` 按钮（含空工作区与有会话工作区分支）挂载该右键菜单。
+  3. **测试（`internal/daemon/project_test.go`、`tabs_test.go`）**：
+     - 新增 `TestCreateNoDefaultsSkipsWorkspaceDefaults` 与 `TestTopTabsNewTabRightClickShellMenu`，覆盖 `NoDefaults` 跳过工作区默认目录/命令/Shell 与默认 `NewSessionDir`、各分支右键菜单选择及自定义 Shell 条目。
+- **同步上游时的冲突处理原则**：
+  - 合并 `internal/proto/proto.go`、`internal/daemon/sessions.go` 与 `tabs.go` 时，保留 `CreateParams.NoDefaults` 字段及其在 `Daemon.create` 的短路逻辑，以及 `topTabsBar` 中 `new-tab` 按钮的 `a.newTabShellMenu` 绑定；
+  - 若上游修改 `hostShellOptions` 或 `newSessionOn` 参数结构，需同步调整 `newTabShellMenu` 与 `newSessionWithShell`。
 
 ---
 

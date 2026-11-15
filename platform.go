@@ -110,17 +110,51 @@ var (
 )
 
 // controlsW is the window controls' width: three buttons, two apart.
-const controlsW = 3*28 + 2*2
+const (
+	controlsW   = 3*controlBtnW + 2*2
+	controlBtnW = 28
+	controlBtnH = 26
+	controlTop  = barMid - controlBtnH/2
+)
 
-// windowControls are a window's minimize, maximize and close buttons, as
-// Kero draws them (ownControls), at the right of a header: the Settings
-// window's. The main window's are over its corner (mainControls).
-func windowControls(c *ui.Context, pal *palette, w *mygo.Window) {
+// windowControlTarget is the subset of *mygo.Window needed to render and drive
+// the custom title bar window controls.
+type windowControlTarget interface {
+	Minimize()
+	Maximize()
+	Unmaximize()
+	IsMaximized() bool
+	IsFullScreen() bool
+	Close()
+}
+
+func resolveWindowTarget(w *mygo.Window, fallback windowControlTarget) windowControlTarget {
+	if w != nil {
+		return w
+	}
+	return fallback
+}
+
+// cornerControls renders the window controls at the top right corner of a window.
+// When the window is maximized or in full screen, the close button's hit area
+// extends seamlessly to the top-right screen corner (0, width) so Fitts's law
+// blind-spot clicks close the window while keeping the visual pill aligned.
+func cornerControls(c *ui.Context, pal *palette, key string, w windowControlTarget, edge float32) {
 	if !showControls || w == nil {
 		return
 	}
-	ui.Row(c.Key("window-controls")).Gap(2).AlignItems(ui.Center).Shrink(0).Margin(0, 0, 0, 6).Children(func() {
-		controlButtons(c, pal, w)
+	maximized := w.IsMaximized()
+	cornerClose := maximized || w.IsFullScreen()
+	row := ui.Row(c.Key(key)).Absolute().Gap(2).DragWindow()
+	var topPad, rightPad float32
+	if cornerClose {
+		topPad, rightPad = controlTop, edge+10
+		row.Right(0).Top(0).AlignItems(ui.Start)
+	} else {
+		row.Right(edge + 10).Top(controlTop).AlignItems(ui.Center)
+	}
+	row.Children(func() {
+		controlButtons(c, pal, w, maximized, topPad, rightPad)
 	})
 }
 
@@ -131,12 +165,14 @@ func windowControls(c *ui.Context, pal *palette, w *mygo.Window) {
 // nothing as the sidebar shows, the controls moving with it; the headers
 // under them keep room for them (controlsRoom, rightSidebar).
 func (a *App) mainControls(c *ui.Context, pal *palette, edge float32) {
-	if !showControls || a.win == nil {
-		return
-	}
-	ui.Row(c.Key("main-controls")).Absolute().Right(edge + 10).Top(barMid - 13).Gap(2).AlignItems(ui.Center).DragWindow().Children(func() {
-		controlButtons(c, pal, a.win)
-	})
+	cornerControls(c, pal, "main-controls", resolveWindowTarget(a.win, a.testWin), edge)
+}
+
+// settingsControls renders the Settings window's controls over its top right
+// corner so its close button also reaches the top-right blind spot when
+// maximized or in full screen.
+func (a *App) settingsControls(c *ui.Context, pal *palette) {
+	cornerControls(c, pal, "settings-controls", resolveWindowTarget(a.setWin, a.testSetWin), cardGap)
 }
 
 // controlsRoom keeps room at the right of the header at the window's top
@@ -144,7 +180,7 @@ func (a *App) mainControls(c *ui.Context, pal *palette, edge float32) {
 // as far as they come over the header: less as the right sidebar comes
 // in beside the card, and none once the sidebar is wider than they are.
 func (a *App) controlsRoom(c *ui.Context, gap float32) {
-	if !showControls || a.win == nil {
+	if !showControls || resolveWindowTarget(a.win, a.testWin) == nil {
 		return
 	}
 	// The gap before the room is in it: it narrows to nothing too.
@@ -164,32 +200,43 @@ func underControls(card ui.Element, w float32) bool {
 }
 
 // controlButtons are the window controls' buttons.
-func controlButtons(c *ui.Context, pal *palette, w *mygo.Window) {
-	iconButton(c, "minimize", minimizeIcon, locales.WindowMinimize(), pal, w.Minimize)
-	// The system's maximize button for the pointer, which brings
-	// Windows 11's snap layouts as it rests there: no tooltip over them.
-	maximized := w.IsMaximized()
-	label, svg := locales.WindowMaximize(), maximizeIcon
-	if maximized {
-		label, svg = locales.WindowRestore(), restoreIcon
-	}
-	m := ui.ButtonBase(c.Key("maximize")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(label).MaximizeButton()
-	if m.Pressed() {
-		m.Background(pal.rowHover.Alpha(0.12))
-	} else if m.Hovered() {
-		m.Background(pal.rowHover).TextColor(pal.text)
-	}
-	m.Children(func() { ui.Icon(c, svg).Size(16, 16) })
-	if m.Clicked() {
+func controlButtons(c *ui.Context, pal *palette, w windowControlTarget, maximized bool, topPad, rightPad float32) {
+	ui.Row(c.Key("window-actions")).Gap(2).AlignItems(ui.Center).Margin(topPad, 0, 0, 0).Children(func() {
+		iconButton(c, "minimize", minimizeIcon, locales.WindowMinimize(), pal, w.Minimize)
+		// The system's maximize button for the pointer, which brings
+		// Windows 11's snap layouts as it rests there: no tooltip over them.
+		label, svg := locales.WindowMaximize(), maximizeIcon
 		if maximized {
-			w.Unmaximize()
-		} else {
-			w.Maximize()
+			label, svg = locales.WindowRestore(), restoreIcon
 		}
-	}
-	b := ui.ButtonBase(c.Key("close-window")).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(locales.CommonClose()).Tooltip(locales.CommonClose())
-	if b.Hovered() || b.Pressed() {
-		b.Background(pal.danger).TextColor(ui.RGB(255, 255, 255))
+		m := ui.ButtonBase(c.Key("maximize")).Size(controlBtnW, controlBtnH).Radius(6).Center().TextColor(pal.textMuted).Label(label).MaximizeButton()
+		if m.Pressed() {
+			m.Background(pal.rowHover.Alpha(0.12))
+		} else if m.Hovered() {
+			m.Background(pal.rowHover).TextColor(pal.text)
+		}
+		m.Children(func() { ui.Icon(c, svg).Size(16, 16) })
+		if m.Clicked() {
+			if maximized {
+				w.Unmaximize()
+			} else {
+				w.Maximize()
+			}
+		}
+	})
+	b := ui.ButtonBase(c.Key("close-window")).Center().TextColor(pal.textMuted).Label(locales.CommonClose()).Tooltip(locales.CommonClose())
+	if topPad > 0 || rightPad > 0 {
+		b.Size(controlBtnW+rightPad, controlBtnH+topPad).Padding(topPad, rightPad, 0, 0)
+		if b.Hovered() || b.Pressed() {
+			b.TextColor(ui.RGB(255, 255, 255)).Draw(func(p *ui.Painter, r ui.Rect) {
+				p.Fill(ui.Rect{X: r.X, Y: r.Y + topPad, W: controlBtnW, H: controlBtnH}, pal.danger, 6)
+			})
+		}
+	} else {
+		b.Size(controlBtnW, controlBtnH).Radius(6)
+		if b.Hovered() || b.Pressed() {
+			b.Background(pal.danger).TextColor(ui.RGB(255, 255, 255))
+		}
 	}
 	b.Children(func() { ui.Icon(c, closeIcon).Size(16, 16) })
 	if b.Clicked() {

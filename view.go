@@ -232,7 +232,7 @@ func (a *App) resizeHandle(c *ui.Context, pal *palette) {
 }
 
 // iconButton is a quiet square button with an icon, as in a toolbar.
-func iconButton(c *ui.Context, key string, svg *ui.SVG, label string, pal *palette, fn func()) {
+func iconButton(c *ui.Context, key string, svg *ui.SVG, label string, pal *palette, fn func()) ui.Element {
 	b := ui.ButtonBase(c.Key(key)).Size(28, 26).Radius(6).Center().TextColor(pal.textMuted).Label(label).Tooltip(label)
 	if b.Pressed() {
 		b.Background(pal.rowHover.Alpha(0.12))
@@ -244,6 +244,7 @@ func iconButton(c *ui.Context, key string, svg *ui.SVG, label string, pal *palet
 	if b.Clicked() {
 		fn()
 	}
+	return b
 }
 
 // tipsAt are where pointerTooltip's tips show, by key: where the pointer
