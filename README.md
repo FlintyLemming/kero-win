@@ -25,7 +25,22 @@
 - **独立台账**：通过 [PATCHES.md](PATCHES.md) 登记所有本地魔改项及对应上游同步冲突处理建议。
 - **版本与 Tag 约定**：见下文规则，`mygo.json` 中的 `"version"` 与 Release Tag 保持严格一致。
 
-### 3. Windows 专项适配
+### 3. 恢复 1.x 风格项目侧边栏与顶部横向标签页（`c4c5218`）
+
+参考上游 `1.x` 的界面布局，恢复“左侧边栏管理 Projects + 顶部横向标签页管理当前项目会话”的经典模式（默认关闭以保持 `2.x` 默认布局）：
+
+- **设置与配置开关**：在 **Settings → General** 中新增 **Top session tabs / 顶部会话标签页** 开关，并对应配置文件键 `top-tabs = true`（支持设置搜索）。
+- **左侧项目管理**：开启后侧边栏仅列出项目行，支持项目汇总状态、会话数显示、`Cmd/Ctrl+1..9` 快速切换项目、拖拽排序、右键菜单及记忆各项目上次打开的会话；空项目也会保持选中并提示新建会话。
+- **顶部横向标签栏**：在主区域上方横向展示当前项目的会话标签（支持横向滚动、悬停关闭、双击重命名、`+` 新建会话、水平拖拽重排顺序、右键关闭其他/右侧会话，`Ctrl+Tab` 在当前项目标签内切换），并自动协调侧边栏折叠按钮与系统窗口控制按钮位置。
+
+### 4. 项目级右键默认 Shell 与默认命令（`c4c5218`）
+
+在侧边栏项目右键菜单（标准模式与顶部标签页模式共用）中新增项目级启动配置，并随 `kerod` 状态持久化：
+
+- **默认 Shell（Default Shell）子菜单**：通过 `host.shells` 与 `internal/shell` 自动探测主机可用终端（Windows 下支持 PowerShell 7 / `pwsh`、Windows PowerShell、命令提示符 `cmd`、已安装的 WSL 发行版如 `Ubuntu`、Git Bash；Unix 下列出系统可用 Shell），可通过 `project.shell` 为每个项目单独指定默认 Shell 或切回“自动（跟随主机默认）”。
+- **默认命令（Default Command…）**：通过 `project.command` 弹窗为指定项目设置创建新会话时自动执行的启动命令，并在项目 Tooltip 中展示当前配置。
+
+### 5. Windows 专项适配
 
 > 后续针对 Windows 的终端行为、快捷键、窗口表现、ConPTY / CLI 安装等改进将陆续合入 `main`，并同步登记至 [PATCHES.md](PATCHES.md)。
 

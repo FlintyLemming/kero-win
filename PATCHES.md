@@ -33,7 +33,8 @@
 | ID | 状态 | 日期 | 提交 | 类别 | 摘要 |
 | --- | --- | --- | --- | --- | --- |
 | P001 | 已应用 | 2026-11-13 | `3b36bed` | 功能精简 | 移除全部 AI / Coding Agent 功能，还原为通用终端 |
-| P002 | 已应用 | 2026-11-15 | `v2.1.35-patch.2026111518` | 仓库治理 | 配置 `Upstream`、更新 `README.md`、建立台账 `PATCHES.md`、设定 `patch` 版本规则 |
+| P002 | 已应用 | 2026-11-15 | `ee669f1` | 仓库治理 | 配置 `Upstream`、更新 `README.md`、建立台账 `PATCHES.md`、设定 `patch` 版本规则 |
+| P003 | 已应用 | 2026-11-15 | `c4c5218` | UI 与项目配置 | 恢复 1.x 风格项目侧边栏 + 顶部横向标签页（`top-tabs`），新增项目级默认 Shell 与默认命令 |
 
 ---
 
@@ -74,6 +75,29 @@
   - 重写 [README.md](README.md)，说明仓库用途、已改动点与版本规则；
   - 新增本台账 [PATCHES.md](PATCHES.md)；
   - 更新 [mygo.json](mygo.json) 的 `"version"` 为 `2.1.35-patch.2026111518`。
+
+### P003：1.x 风格顶部会话标签页、项目默认 Shell 与默认命令
+
+- **Commit**：`c4c5218` (`Feat: add top session tabs, project default command, and project default shell`)
+- **日期**：2026-11-15
+- **目的**：找回上游 `1.x` 左侧项目导航 + 顶部横向标签页布局（可通过设置切换），并支持在项目右键菜单中为不同项目独立指定默认 Shell 与默认启动命令。
+- **改动清单**：
+  1. **设置与本地化**：
+     - 在 `internal/settings/settings.go` 与 `internal/settings/config.go` 新增 `TopTabs bool`（配置项 `top-tabs`，默认 `false`），并在 `internal/settings/config_test.go` 增加配置往返测试；
+     - 在 `settings_view.go`（General 页）和 `settings_search.go` 暴露 **Top session tabs / 顶部会话标签页** 开关与检索关键词；
+     - 在 `locales/en.json`、`locales/ja.json`、`locales/zh-Hans.json` 增加对应词条并重新生成 `locales/catalog_gen.go`。
+  2. **项目切换、标签排序与快捷键**：
+     - 在 `app.go`、`hosts.go`、`palette.go` 维护当前选中项目（`selectedProject`）与各项目上次会话记忆（`projectSession`），支持 `Cmd/Ctrl+1..9` 切换项目、`Ctrl+Tab` / 上下一会话在当前项目标签内切换，以及关闭最后一个会话时留在空项目。
+  3. **顶部横向标签栏与项目侧边栏 UI**：
+     - 新增 `tabs.go`（`projectGroupView`、`projectRow`、`topTabsBar`、`sessionTabItem` 等）与 `tabs_test.go` UI 测试；
+     - 调整 `view.go`、`panes.go`、`side.go`，在开启 `TopTabs` 时渲染顶部横向标签栏及空项目提示，并避免窗格/右侧面板头部重复占用顶部控制区。
+  4. **项目级默认 Shell 与默认命令**：
+     - 新增 `internal/shell/`（`list.go`、`list_windows.go`、`list_unix.go`、`list_test.go`）及改进 `internal/shell/account_windows.go`，用于探测主机可用 Shell（`pwsh`、Windows PowerShell、`cmd`、WSL 发行版、Git Bash 及 Unix shells）；
+     - 新增 `project_shell.go`（`fetchShells`、`projectShellMenu`、`setProjectShell` 等），在 `view.go`（`projectContextMenu`、`projectCommandView`）为项目右键菜单增加“默认 Shell”子菜单与“默认命令…”弹窗；
+     - 在 `internal/proto/proto.go`、`hosts.go`、`internal/daemon/`（`rpc.go`、`sessions.go`、`session.go`、`shellcmd.go`、`store.go`、`project_test.go`）实现 `host.shells`、`project.shell`、`project.command` RPC 与持久化恢复（并在 `project_order_test.go` 补充相关测试）。
+- **同步上游时的冲突处理原则**：
+  - `tabs.go`、`tabs_test.go`、`project_shell.go`、`internal/daemon/shellcmd.go`、`internal/shell/list*.go` 为独立新增文件，仅需随上游接口小幅适配；
+  - `view.go`、`panes.go`、`side.go`、`app.go`、`hosts.go`、`settings_view.go` 及 `internal/daemon/*` 合并冲突时，保留上游新功能并保持 `a.set.TopTabs` 分支以及 `Project.Shell` / `Project.Command` 字段的持久化路径。
 
 ---
 
