@@ -53,6 +53,11 @@
 
 > 后续针对 Windows 的终端行为、快捷键、窗口表现、ConPTY / CLI 安装等改进将陆续合入 `main`，并同步登记至 [PATCHES.md](PATCHES.md)。
 
+### 6. 自用更新源与纯手动 Windows 发布工作流
+
+- **独立更新源与签名校验**：将 [mygo.json](mygo.json)、[internal/update/update.go](internal/update/update.go) 及服务端安装脚本（[scripts/install-server.sh](scripts/install-server.sh)、[scripts/install-server.ps1](scripts/install-server.ps1)）中的 Release 仓库改为 `FlintyLemming/kero-win`，并替换为独立的 Ed25519 更新签名公钥（私钥通过 GitHub Actions Secret `MYGO_UPDATER_PRIVATE_KEY` 注入）。
+- **纯手动 Windows 桌面端发布**：[.github/workflows/release.yml](.github/workflows/release.yml) 取消 `push: tags` 自动触发，仅保留 `workflow_dispatch` 手动触发；仅构建并校验 Windows 桌面端（`windows/amd64`、`windows/arm64`），移除 macOS / Linux 桌面端与 `kero-server` 打包签名任务，并将 `test` 任务限定为 `windows-latest`。[.github/workflows/ci.yml](.github/workflows/ci.yml) 将自动编译与测试限定为 `windows-latest`（仅执行 `go vet ./...`、`go test ./internal/...` 与 Windows `go build ./...`），移除跨平台 / `kero-server` 构建、安装脚本检查与自动调用 `server.yml` 的打包流程，并删除 `.github/workflows/server.yml`。同时修复 `internal/daemon` 与 `internal/git` 测试在 Windows 下的权限位、跨盘符路径、盘符前缀与符号链接兼容性。
+
 ## 版本号与 Tag 规则
 
 为了在定期同步上游的同时清晰标识每次自用构建，并兼容 `mygo` 与 `.github/workflows/release.yml` / `internal/update` 的格式校验，版本与 Tag 统一采用：

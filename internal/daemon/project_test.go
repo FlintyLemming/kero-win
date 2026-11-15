@@ -207,11 +207,16 @@ func TestProjectCreateRejectsInvalidSymlinks(t *testing.T) {
 
 func TestProjectCreateNormalizesRelativeDirectory(t *testing.T) {
 	d := projectDaemon(t)
-	dir := t.TempDir()
-	cwd, err := os.Getwd()
-	if err != nil {
+	base := t.TempDir()
+	cwd := filepath.Join(base, "cwd")
+	dir := filepath.Join(base, "proj")
+	if err := os.MkdirAll(cwd, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(cwd)
 	rel, err := filepath.Rel(cwd, dir)
 	if err != nil {
 		t.Fatal(err)
@@ -268,6 +273,33 @@ func TestProjectCreateNameOnly(t *testing.T) {
 	p, err := createProject(t, d, proto.ProjectParams{Name: "Named project"})
 	if err != nil || p.ID == "" || p.Name != "Named project" || p.Dir != "" {
 		t.Errorf("name-only project.create = %+v, %v, want a named project without a directory", p, err)
+	}
+}
+
+func TestProjectCreateCommandAndShell(t *testing.T) {
+	d := projectDaemon(t)
+	p, err := createProject(t, d, proto.ProjectParams{
+		Name:    "Scratch",
+		Command: "  echo hi  ",
+		Shell:   "  bash  ",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Command != "echo hi" || p.Shell != "bash" {
+		t.Errorf("project.create command/shell = %+v, want trimmed Command and Shell", p)
+	}
+	dir := t.TempDir()
+	withDir, err := createProject(t, d, proto.ProjectParams{
+		Dir:     dir,
+		Command: "npm run dev",
+		Shell:   "zsh",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withDir.Command != "npm run dev" || withDir.Shell != "zsh" {
+		t.Errorf("project.create(dir) command/shell = %+v, want Command and Shell saved", withDir)
 	}
 }
 
@@ -459,21 +491,21 @@ func TestHostShellsRPC(t *testing.T) {
 }
 
 func TestResolveShellAndArgs(t *testing.T) {
-	wslSpec := resolveShell("wsl:Ubuntu")
-	if wslSpec.wsl != "Ubuntu" || wslSpec.name != "Ubuntu" {
-		t.Fatalf("resolveShell(wsl:Ubuntu) = %+v", wslSpec)
-	}
-	if args := shellSpecArgs(wslSpec, "", "", nil); !slices.Equal(args, []string{"wsl", "-d", "Ubuntu"}) {
-		t.Fatalf("wsl args = %v, want [wsl -d Ubuntu]", args)
-	}
-	if args := shellSpecArgs(wslSpec, "", "", []string{"echo", "hi"}); len(args) < 4 || args[2] != "Ubuntu" || args[3] != "--" {
-		t.Fatalf("wsl command args = %v", args)
-	}
-	if marksExitSpec(wslSpec) {
-		t.Fatal("marksExitSpec(wsl) = true, want false")
-	}
-
 	if runtime.GOOS == "windows" {
+		wslSpec := resolveShell("wsl:Ubuntu")
+		if wslSpec.wsl != "Ubuntu" || wslSpec.name != "Ubuntu" {
+			t.Fatalf("resolveShell(wsl:Ubuntu) = %+v", wslSpec)
+		}
+		if args := shellSpecArgs(wslSpec, "", "", nil); !slices.Equal(args, []string{"wsl", "-d", "Ubuntu"}) {
+			t.Fatalf("wsl args = %v, want [wsl -d Ubuntu]", args)
+		}
+		if args := shellSpecArgs(wslSpec, "", "", []string{"echo", "hi"}); len(args) < 4 || args[2] != "Ubuntu" || args[3] != "--" {
+			t.Fatalf("wsl command args = %v", args)
+		}
+		if marksExitSpec(wslSpec) {
+			t.Fatal("marksExitSpec(wsl) = true, want false")
+		}
+
 		cmdSpec := resolveShell("cmd")
 		if cmdSpec.name != "cmd" || cmdSpec.wsl != "" {
 			t.Fatalf("resolveShell(cmd) = %+v", cmdSpec)

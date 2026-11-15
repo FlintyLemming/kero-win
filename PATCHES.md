@@ -35,7 +35,8 @@
 | P001 | 已应用 | 2026-11-13 | `3b36bed` | 功能精简 | 移除全部 AI / Coding Agent 功能，还原为通用终端 |
 | P002 | 已应用 | 2026-11-15 | `ee669f1` | 仓库治理 | 配置 `Upstream`、更新 `README.md`、建立台账 `PATCHES.md`、设定 `patch` 版本规则 |
 | P003 | 已应用 | 2026-11-15 | `c4c5218` | UI 与项目配置 | 恢复 1.x 风格项目侧边栏 + 顶部横向标签页（`top-tabs`），新增项目级默认 Shell 与默认命令 |
-| P004 | 已应用 | 2026-11-15 | 本地工作区 | UI 与交互 | 为顶部会话标签页增加鼠标中键关闭功能 |
+| P004 | 已应用 | 2026-11-15 | `b057a97` | UI 与交互 | 为顶部会话标签页增加鼠标中键关闭功能 |
+| P005 | 已应用 | 2026-11-15 | 待提交 | 更新源与 CI/CD | 更新源与公钥切换到 `FlintyLemming/kero-win`；发布改为纯手动 Windows 桌面端；CI/测试限定 Windows 并修复 Windows 测试兼容性 |
 
 ---
 
@@ -110,6 +111,28 @@
   - `tabs_test.go`：新增 `TestTopTabsMiddleClickClose` 覆盖中键关闭、拖出取消、`CancelPress`、重命名中忽略及 `ConfirmClose` 确认逻辑。
 - **同步上游时的冲突处理原则**：
   - `tabs.go` 与 `tabs_test.go` 为独立新增文件；合并 `app.go` 与 `view.go` 时保留 `tabMiddleClose` 字段及每帧清理逻辑即可。
+
+### P005：自用更新源、纯手动 Windows 发布与 Windows 测试适配
+
+- **日期**：2026-11-15
+- **目的**：使桌面端/服务端更新检查与下载指向 `FlintyLemming/kero-win` 并使用自有密钥签名；工作流仅保留纯手动 Windows 桌面端发布，并将测试环境限定为 Windows 且确保 `go test ./internal/...` 在 Windows 下全绿。
+- **改动清单**：
+  1. **更新仓库与签名公钥**：
+     - 修改 `mygo.json`（`updates.github`、`updates.publicKey`）、`internal/update/update.go`（`Repo`、`PublicKey`）以及 `scripts/install-server.sh`、`scripts/install-server.ps1`；
+     - 使用 `go tool mygo keygen` 生成独立 Ed25519 密钥对，公钥写入仓库配置，私钥由用户配置到 GitHub Secret `MYGO_UPDATER_PRIVATE_KEY`。
+  2. **GitHub Actions 工作流精简**：
+     - 修改 `.github/workflows/release.yml`：移除 `push: tags: ["v*"]` 自动触发（仅保留 `workflow_dispatch`）；仅构建 `windows/amd64,windows/arm64` 桌面端，移除 `macOS`、`Linux` 及 `server` / `server-sign` 任务，将 `test` 任务限定为 `windows-latest`，并更新 `assets` 校验清单；
+     - 修改 `.github/workflows/ci.yml`：将 `test` 任务改为 `runs-on: windows-latest`，保留 `go vet ./...`、`go test ./internal/...` 与 Windows `go build ./...`，移除跨平台/`kero-server` 构建、Server 安装脚本检查及自动调用 `server.yml` 的 `server` 任务；
+     - 删除 `.github/workflows/server.yml`。
+  3. **Windows 测试兼容性修复**：
+     - `internal/daemon/fs_test.go`（`TestFSWrite`）与 `internal/git/git_test.go`（`TestWrite`）：改为断言写入前后权限位一致，兼容 Windows NTFS 无 POSIX `0755` 权限位；
+     - `internal/daemon/project_test.go`（`TestProjectCreateNormalizesRelativeDirectory`、`TestResolveShellAndArgs`）：使用同一 `t.TempDir()` 下的 `t.Chdir` 避免 Windows 跨盘符 `filepath.Rel` 失败，并将 `wsl:Ubuntu` 用例收入 `runtime.GOOS == "windows"` 分支；
+     - `internal/daemon/worktree_test.go`（`TestWorktreePath`）：在 Windows 下为虚拟绝对路径加上 `C:` 盘符；
+     - `internal/git/git_test.go`（`TestLocal`）：将符号链接测试拆分子测试并在 Windows 无符号链接权限时跳过。
+- **同步上游时的冲突处理原则**：
+  - `mygo.json`、`internal/update/update.go`、`scripts/install-server.*` 中保持 `FlintyLemming/kero-win` 与自有 `publicKey` 不被上游覆盖；
+  - `.github/workflows/release.yml` 与 `.github/workflows/ci.yml` 保持纯手动 `workflow_dispatch` 发布、Windows-only 构建与测试策略；若上游更新 `.github/workflows/server.yml`，保持删除状态（`git rm`）；
+  - 上述 `internal/*/*_test.go` 合并时保留 Windows 兼容断言。
 
 ---
 

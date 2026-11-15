@@ -8,8 +8,8 @@
     "source": "en"
   },
   "updates": {
-    "publicKey": "WzJsOGNIuf6mcEqo5ff8jub+NoQQOEk4JXreLPYjgyQ=",
-    "github": "egoist/kero"
+    "publicKey": "cH2W5jS2k7kW5/EiGj69rsLq0XqBQ6M5xQ5lNGGPAVc=",
+    "github": "FlintyLemming/kero-win"
   },
   "macos": {
     "signingIdentity": "Developer ID Application: xinyu zeng (GJE9R5VE87)",

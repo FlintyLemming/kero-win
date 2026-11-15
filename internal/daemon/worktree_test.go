@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -103,14 +104,18 @@ func TestWorktreeSession(t *testing.T) {
 }
 
 func TestWorktreePath(t *testing.T) {
-	main := filepath.FromSlash("/src/kero")
-	if got := worktreePath(main, "fix/login", ""); got != filepath.FromSlash("/src/kero/.kero/worktrees/fix-login") {
+	vol := ""
+	if runtime.GOOS == "windows" {
+		vol = "C:"
+	}
+	main := filepath.FromSlash(vol + "/src/kero")
+	if got := worktreePath(main, "fix/login", ""); got != filepath.FromSlash(vol+"/src/kero/.kero/worktrees/fix-login") {
 		t.Error(got)
 	}
-	if got := worktreePath(main, "x", filepath.FromSlash("/wt")); got != filepath.FromSlash("/wt/kero/x") {
+	if got := worktreePath(main, "x", filepath.FromSlash(vol+"/wt")); got != filepath.FromSlash(vol+"/wt/kero/x") {
 		t.Error(got)
 	}
-	if got := worktreePath(main, "x", "../trees"); got != filepath.FromSlash("/src/trees/kero/x") {
+	if got := worktreePath(main, "x", "../trees"); got != filepath.FromSlash(vol+"/src/trees/kero/x") {
 		t.Error(got)
 	}
 }

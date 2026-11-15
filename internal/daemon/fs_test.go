@@ -184,6 +184,10 @@ func TestFSWrite(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "a.sh")
 	os.WriteFile(file, []byte("echo a\n"), 0o755)
+	before, err := os.Stat(file)
+	if err != nil {
+		t.Fatal(err)
+	}
 	d.panes = map[string]*pane{"p": p}
 	p.info.Dir = dir
 
@@ -191,8 +195,8 @@ func TestFSWrite(t *testing.T) {
 	if b, _ := os.ReadFile(file); err != nil || string(b) != "echo b\n" || h != git.Hash(b) {
 		t.Fatalf("wrote %q, %q, %v", b, h, err)
 	}
-	if st, _ := os.Stat(file); st.Mode().Perm() != 0o755 {
-		t.Errorf("the mode is %v", st.Mode().Perm())
+	if st, _ := os.Stat(file); st.Mode().Perm() != before.Mode().Perm() {
+		t.Errorf("the mode is %v, want %v", st.Mode().Perm(), before.Mode().Perm())
 	}
 	if _, err := d.fsWrite(proto.FSWriteParams{Path: file, Hash: git.Hash([]byte("echo a\n")), Text: "echo c\n"}); !errors.Is(err, git.ErrChanged) {
 		t.Errorf("wrote over a file changed meanwhile: %v", err)

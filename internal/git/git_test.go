@@ -164,6 +164,10 @@ func TestWrite(t *testing.T) {
 	r := repo(t, map[string]string{"a.txt": "a\n"})
 	full := filepath.Join(r.Root, "a.txt")
 	os.Chmod(full, 0o755)
+	before, err := os.Stat(full)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := WriteFile(full, Hash([]byte("not it")), "x\n"); err != ErrChanged {
 		t.Errorf("a stale write: %v", err)
 	}
@@ -172,20 +176,27 @@ func TestWrite(t *testing.T) {
 	}
 	b, _ := os.ReadFile(full)
 	fi, _ := os.Stat(full)
-	if string(b) != "b\n" || fi.Mode().Perm() != 0o755 {
-		t.Errorf("wrote %q, mode %v", b, fi.Mode())
+	if string(b) != "b\n" || fi.Mode().Perm() != before.Mode().Perm() {
+		t.Errorf("wrote %q, mode %v (want %v)", b, fi.Mode(), before.Mode())
 	}
 }
 
 func TestLocal(t *testing.T) {
 	r := repo(t, map[string]string{"a.txt": "a\n"})
-	outside := t.TempDir()
-	os.Symlink(outside, filepath.Join(r.Root, "link"))
-	for _, p := range []string{"", "../x", "a/../../x", "/etc/passwd", ".git/config", "link/x", ".GIT/config"} {
+	for _, p := range []string{"", "../x", "a/../../x", "/etc/passwd", ".git/config", ".GIT/config"} {
 		if _, err := r.local(p); err == nil {
 			t.Errorf("local(%q) let it through", p)
 		}
 	}
+	t.Run("symlink", func(t *testing.T) {
+		outside := t.TempDir()
+		if err := os.Symlink(outside, filepath.Join(r.Root, "link")); err != nil {
+			t.Skipf("symlinks unavailable: %v", err)
+		}
+		if _, err := r.local("link/x"); err == nil {
+			t.Errorf("local(%q) let it through", "link/x")
+		}
+	})
 	for _, p := range []string{"a.txt", "sub/../a.txt", "gone/file.txt"} {
 		if _, err := r.local(p); err != nil {
 			t.Errorf("local(%q): %v", p, err)
