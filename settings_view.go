@@ -1501,7 +1501,7 @@ func (a *App) recordKey(act actions.Action, mods ui.Modifiers, key ui.Key) bool 
 	if !ok {
 		return false // a modifier alone, or a key menus can't take
 	}
-	if mods&(ui.Super|ui.Ctrl|ui.Alt) == 0 && !strings.HasPrefix(name, "F") {
+	if mods&(ui.Super|ui.Ctrl|ui.Alt) == 0 && !strings.HasPrefix(name, "F") && !(key == ui.KeyInsert && mods == ui.Shift) {
 		a.ss.notice = shortcutNeeds()
 		return true
 	}
@@ -1557,7 +1557,7 @@ func (a *App) setShortcut(id, accel string) {
 // keyNames are the keys a shortcut takes, by their accelerator names.
 var keyNames = func() map[ui.Key]string {
 	m := map[ui.Key]string{
-		ui.KeyEnter: "Enter", ui.KeyTab: "Tab", ui.KeySpace: "Space", ui.KeyBackspace: "Backspace", ui.KeyDelete: "Delete",
+		ui.KeyEnter: "Enter", ui.KeyTab: "Tab", ui.KeySpace: "Space", ui.KeyBackspace: "Backspace", ui.KeyDelete: "Delete", ui.KeyInsert: "Insert",
 		ui.KeyEscape: "Escape", ui.KeyHome: "Home", ui.KeyEnd: "End", ui.KeyPageUp: "PageUp", ui.KeyPageDown: "PageDown",
 		ui.KeyLeft: "Left", ui.KeyRight: "Right", ui.KeyUp: "Up", ui.KeyDown: "Down",
 		ui.KeyMinus: "-", ui.KeyEqual: "=", ui.KeyComma: ",", ui.KeyPeriod: ".", ui.KeySlash: "/", ui.KeySemicolon: ";",

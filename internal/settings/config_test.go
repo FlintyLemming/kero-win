@@ -100,6 +100,14 @@ func TestKeybinds(t *testing.T) {
 	if out := format(s2, ""); !strings.Contains(out, "keybind = "+keys+"=unbind\n") {
 		t.Errorf("formatted:\n%s", out)
 	}
+	// Copy and Paste actions round-trip, including Insert keys and unbinding.
+	s3, probs := parse("keybind = alt+c=edit.copy\nkeybind = shift+insert=edit.paste\n")
+	if len(probs) != 0 || s3.Shortcuts["edit.copy"] != "Alt+C" || s3.Shortcuts["edit.paste"] != "Shift+Insert" {
+		t.Errorf("copy/paste = %v, problems %q", s3.Shortcuts, probs)
+	}
+	if out := format(s3, ""); !strings.Contains(out, "keybind = alt+c=edit.copy\n") || !strings.Contains(out, "keybind = shift+insert=edit.paste\n") {
+		t.Errorf("formatted copy/paste:\n%s", out)
+	}
 }
 
 // Ghostty's global: prefix binds the quick terminal as Ghostty's

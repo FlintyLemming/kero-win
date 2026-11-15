@@ -42,6 +42,8 @@ var All = []Action{
 	{ID: "pane.close", Title: "Close", Menu: "Session", Keys: "CmdOrCtrl+W"},
 	{ID: "session.close", Title: "Close Session", Menu: "Session", Keys: "CmdOrCtrl+Shift+W"},
 
+	{ID: "edit.copy", Title: "Copy", Menu: "Edit", Keys: "CmdOrCtrl+C"},
+	{ID: "edit.paste", Title: "Paste", Menu: "Edit", Keys: "CmdOrCtrl+V"},
 	{ID: "find.open", Title: "Find…", Menu: "Edit", Keys: "CmdOrCtrl+F"},
 	{ID: "find.next", Title: "Find Next", Menu: "Edit", Keys: "CmdOrCtrl+G"},
 	{ID: "find.previous", Title: "Find Previous", Menu: "Edit", Keys: "CmdOrCtrl+Shift+G"},
@@ -90,6 +92,8 @@ var pcKeys = map[string]string{
 	"pane.restart":        "Ctrl+Shift+R",
 	"pane.close":          "Ctrl+Shift+W",
 	"session.close":       "",
+	"edit.copy":           "Ctrl+Shift+C",
+	"edit.paste":          "Ctrl+Shift+V",
 	"find.open":           "Ctrl+Shift+F",
 	"find.next":           "",
 	"find.previous":       "",
@@ -228,7 +232,7 @@ func words(mods []string, key string) string {
 		out = append(out, "Shift")
 	}
 	names := map[string]string{
-		"enter": "Enter", "return": "Enter", "tab": "Tab", "space": "Space", "backspace": "Backspace", "delete": "Del",
+		"enter": "Enter", "return": "Enter", "tab": "Tab", "space": "Space", "backspace": "Backspace", "delete": "Del", "insert": "Insert",
 		"escape": "Esc", "esc": "Esc", "up": "↑", "down": "↓", "left": "←", "right": "→",
 		"home": "Home", "end": "End", "pageup": "PgUp", "pagedown": "PgDn", "plus": "+",
 	}

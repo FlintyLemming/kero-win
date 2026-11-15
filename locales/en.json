@@ -21,6 +21,8 @@
   "actionNewBrowser": "New Browser Pane",
   "actionOpenLocation": "Open Location…",
   "actionZoomPane": "Zoom Pane",
+  "actionCopy": "Copy",
+  "actionPaste": "Paste",
   "actionFind": "Find…",
   "actionFindNext": "Find Next",
   "actionFindPrevious": "Find Previous",

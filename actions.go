@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/plugins/updater"
 	"github.com/egoist/mygo/ui"
 
@@ -176,6 +177,8 @@ var actionTitles = map[string]func() string{
 	"pane.restart":        locales.ActionRestartPane,
 	"pane.close":          locales.ActionClose,
 	"session.close":       locales.ActionCloseSession,
+	"edit.copy":           locales.ActionCopy,
+	"edit.paste":          locales.ActionPaste,
 	"find.open":           locales.ActionFind,
 	"find.next":           locales.ActionFindNext,
 	"find.previous":       locales.ActionFindPrevious,
@@ -260,7 +263,7 @@ func (a *App) menu() *mygo.Menu {
 			[]string{"pane.close", "session.close"})},
 		// The Edit menu's own items, then finding.
 		{Role: mygo.RoleEditMenu, Submenu: append([]*mygo.MenuItem{{Role: mygo.RoleUndo}, {Role: mygo.RoleRedo}, mygo.Separator(),
-			{Role: mygo.RoleCut}, {Role: mygo.RoleCopy}, {Role: mygo.RolePaste}, {Role: mygo.RoleSelectAll}, mygo.Separator()},
+			{Role: mygo.RoleCut}, a.editRoleItem(mygo.RoleCopy, "edit.copy"), a.editRoleItem(mygo.RolePaste, "edit.paste"), {Role: mygo.RoleSelectAll}, mygo.Separator()},
 			a.items("Edit", []string{"find.open", "find.next", "find.previous"})...)},
 		{Label: locales.MenuPane(), Submenu: a.items("Pane",
 			[]string{"pane.split.right", "pane.split.down"},
@@ -286,10 +289,27 @@ func (a *App) tip(title, id string) string {
 	return title
 }
 
-// menuShortcut shows an action's shortcut by a context menu's item.
-func (a *App) menuShortcut(it *ui.MenuItem, id string) *ui.MenuItem {
+// editRoleItem returns an Edit menu role item with its configured shortcut.
+func (a *App) editRoleItem(role mygo.MenuRole, id string) *mygo.MenuItem {
 	act, _ := actions.Find(id)
-	parts := strings.Split(actions.Keys(act, a.set.Shortcuts), "+")
+	accel := a.accelerator(act)
+	if accel == "" {
+		// RoleCopy/RolePaste fill their default accelerator when empty; a
+		// non-parsing value clears the key equivalent while keeping the role.
+		accel = "none"
+	}
+	return &mygo.MenuItem{Role: role, Accelerator: accel}
+}
+
+// parseAccelerator converts an accelerator string into UI modifiers and key.
+func parseAccelerator(accel string) (ui.Modifiers, ui.Key, bool) {
+	if accel == "" {
+		return 0, 0, false
+	}
+	parts := strings.Split(accel, "+")
+	if strings.HasSuffix(accel, "++") {
+		parts = append(parts[:len(parts)-2], "+")
+	}
 	var mods ui.Modifiers
 	for _, p := range parts[:len(parts)-1] {
 		switch strings.ToLower(p) {
@@ -305,10 +325,84 @@ func (a *App) menuShortcut(it *ui.MenuItem, id string) *ui.MenuItem {
 			mods |= ui.Shift
 		}
 	}
+	keyPart := parts[len(parts)-1]
+	switch strings.ToLower(keyPart) {
+	case "plus", "+":
+		return mods, ui.KeyEqual, true
+	case "del":
+		return mods, ui.KeyDelete, true
+	case "return":
+		return mods, ui.KeyEnter, true
+	case "esc":
+		return mods, ui.KeyEscape, true
+	case "pgup":
+		return mods, ui.KeyPageUp, true
+	case "pgdn":
+		return mods, ui.KeyPageDown, true
+	}
 	for k, name := range keyNames {
-		if strings.EqualFold(name, parts[len(parts)-1]) {
-			return it.Shortcut(mods, k)
+		if strings.EqualFold(name, keyPart) {
+			return mods, k, true
 		}
+	}
+	return 0, 0, false
+}
+
+// termKeybinds returns custom terminal keybinds when Copy or Paste has been
+// rebound in Settings, replacing the primary default binding while keeping
+// platform fallbacks (such as performable Ctrl+C on Windows).
+func termKeybinds(shortcuts map[string]string) ([]terminal.Keybind, bool) {
+	copyOver, hasCopy := shortcuts["edit.copy"]
+	pasteOver, hasPaste := shortcuts["edit.paste"]
+	if !hasCopy && !hasPaste {
+		return nil, false
+	}
+	var custom []terminal.Keybind
+	if hasCopy && copyOver != "" {
+		if mods, key, ok := parseAccelerator(copyOver); ok {
+			custom = append(custom, terminal.Keybind{
+				Mods:        mods,
+				Key:         key,
+				Action:      terminal.ActionCopy,
+				Performable: runtime.GOOS == "windows" && mods == ui.Ctrl && key == ui.KeyC,
+			})
+		}
+	}
+	if hasPaste && pasteOver != "" {
+		if mods, key, ok := parseAccelerator(pasteOver); ok {
+			custom = append(custom, terminal.Keybind{
+				Mods:   mods,
+				Key:    key,
+				Action: terminal.ActionPaste,
+			})
+		}
+	}
+	defs := terminal.DefaultKeybinds()
+	out := make([]terminal.Keybind, 0, len(custom)+len(defs))
+	out = append(out, custom...)
+	for _, b := range defs {
+		if !b.Performable && ((hasCopy && b.Action == terminal.ActionCopy) || (hasPaste && b.Action == terminal.ActionPaste)) {
+			continue
+		}
+		taken := false
+		for _, c := range custom {
+			if c.Mods == b.Mods && c.Key == b.Key {
+				taken = true
+				break
+			}
+		}
+		if !taken {
+			out = append(out, b)
+		}
+	}
+	return out, true
+}
+
+// menuShortcut shows an action's shortcut by a context menu's item.
+func (a *App) menuShortcut(it *ui.MenuItem, id string) *ui.MenuItem {
+	act, _ := actions.Find(id)
+	if mods, k, ok := parseAccelerator(actions.Keys(act, a.set.Shortcuts)); ok {
+		return it.Shortcut(mods, k)
 	}
 	return it
 }

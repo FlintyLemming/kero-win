@@ -498,7 +498,7 @@ func accelerator(keys string) string {
 	names := map[string]string{
 		"cmd": "CmdOrCtrl", "super": "CmdOrCtrl", "command": "CmdOrCtrl", "ctrl": "Ctrl", "control": "Ctrl",
 		"alt": "Alt", "opt": "Alt", "option": "Alt", "shift": "Shift",
-		"enter": "Enter", "return": "Enter", "tab": "Tab", "space": "Space", "backspace": "Backspace", "delete": "Delete",
+		"enter": "Enter", "return": "Enter", "tab": "Tab", "space": "Space", "backspace": "Backspace", "delete": "Delete", "insert": "Insert",
 		"escape": "Escape", "esc": "Escape", "up": "Up", "down": "Down", "left": "Left", "right": "Right",
 		"home": "Home", "end": "End", "pageup": "PageUp", "pagedown": "PageDown", "plus": "Plus",
 	}

@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/i18n"
+	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
 	"kero/internal/actions"
@@ -48,7 +50,7 @@ func TestRecordShortcut(t *testing.T) {
 	a := testApp(t)
 	a.ss.draft = map[string]string{}
 	a.ss.page = "keyboard"
-	tt := ui.NewTester(a.settingsView, 820, 1100)
+	tt := ui.NewTester(a.settingsView, 820, 1200)
 	tt.Frame()
 	if err := tt.Click("Shortcut for Split Right"); err != nil {
 		t.Fatal(err)
@@ -765,5 +767,76 @@ func TestNewSessionFolderRow(t *testing.T) {
 	tt.Frame()
 	if tt.HasText("Choose…") {
 		t.Error("the folder row shows with home")
+	}
+}
+
+// Copy and Paste shortcuts appear under Edit in Keyboard settings, record new
+// bindings (including Shift+Insert), and update Edit menu and terminal keybinds.
+func TestCopyPasteShortcuts(t *testing.T) {
+	a := testApp(t)
+	a.ss.draft = map[string]string{}
+	a.ss.page = "keyboard"
+	tt := ui.NewTester(a.settingsView, 820, 1200)
+	tt.Frame()
+	if !tt.HasText("Copy") || !tt.HasText("Paste") {
+		t.Fatalf("Copy/Paste missing from keyboard settings: %q", tt.Texts())
+	}
+	if !slices.Contains(searchResults("copy", nil)["keyboard"], "Copy") || !slices.Contains(searchResults("paste", nil)["keyboard"], "Paste") {
+		t.Errorf("settings search missed Copy/Paste: %v", searchResults("copy", nil))
+	}
+	if _, ok := termKeybinds(nil); ok {
+		t.Error("termKeybinds returned custom binds with no overrides")
+	}
+	// Rebind Copy to Alt+C and Paste to Shift+Insert.
+	if err := tt.Click("Shortcut for Copy"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Key(ui.Alt, ui.KeyC)
+	tt.Frame()
+	tt.Frame()
+	if err := tt.Click("Shortcut for Paste"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Key(ui.Shift, ui.KeyInsert)
+	tt.Frame()
+	tt.Frame()
+	if a.set.Shortcuts["edit.copy"] != "Alt+C" || a.set.Shortcuts["edit.paste"] != "Shift+Insert" {
+		t.Fatalf("recorded shortcuts = %v", a.set.Shortcuts)
+	}
+	if saved := settings.Load(); saved.Shortcuts["edit.copy"] != "Alt+C" || saved.Shortcuts["edit.paste"] != "Shift+Insert" {
+		t.Errorf("not saved: %v", saved.Shortcuts)
+	}
+	copyMenu := a.editRoleItem(mygo.RoleCopy, "edit.copy")
+	pasteMenu := a.editRoleItem(mygo.RolePaste, "edit.paste")
+	if copyMenu.Accelerator != "Alt+C" || pasteMenu.Accelerator != "Shift+Insert" {
+		t.Errorf("menu accelerators = %q, %q", copyMenu.Accelerator, pasteMenu.Accelerator)
+	}
+	binds, ok := termKeybinds(a.set.Shortcuts)
+	if !ok {
+		t.Fatal("expected custom terminal keybinds")
+	}
+	hasAltCopy := false
+	hasShiftInsertPaste := false
+	hasDefaultCopy := false
+	for _, b := range binds {
+		if b.Mods == ui.Alt && b.Key == ui.KeyC && b.Action == terminal.ActionCopy {
+			hasAltCopy = true
+		}
+		if b.Mods == ui.Shift && b.Key == ui.KeyInsert && b.Action == terminal.ActionPaste {
+			hasShiftInsertPaste = true
+		}
+		if b.Action == terminal.ActionCopy && !b.Performable && !(b.Mods == ui.Alt && b.Key == ui.KeyC) {
+			hasDefaultCopy = true
+		}
+	}
+	if !hasAltCopy || !hasShiftInsertPaste || hasDefaultCopy {
+		t.Errorf("termKeybinds = %+v (hasAltCopy=%v, hasShiftInsertPaste=%v, hasDefaultCopy=%v)", binds, hasAltCopy, hasShiftInsertPaste, hasDefaultCopy)
+	}
+	// Unbinding Copy clears its menu accelerator cleanly without falling back to RoleCopy's default.
+	a.setShortcut("edit.copy", "")
+	if unbound := a.editRoleItem(mygo.RoleCopy, "edit.copy"); unbound.Accelerator != "none" {
+		t.Errorf("unbound Copy accelerator = %q, want %q", unbound.Accelerator, "none")
 	}
 }

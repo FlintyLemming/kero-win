@@ -38,8 +38,9 @@
 | P004 | 已应用 | 2026-11-15 | `b057a97` | UI 与交互 | 为顶部会话标签页增加鼠标中键关闭功能 |
 | P005 | 已应用 | 2026-11-15 | `ee6979f` | 更新源与 CI/CD | 更新源与公钥切换到 `FlintyLemming/kero-win`；发布改为纯手动 Windows 桌面端；CI/测试限定 Windows 并修复 Windows 测试兼容性 |
 | P006 | 已应用 | 2026-11-15 | `e775b2f` | UI 与工作区管理 | 左上角 `+` 改为新建工作区弹窗（支持无目录创建、Shell/命令预配置），全量统一 Workspace 术语 |
-| P007 | 已应用 | 2026-11-15 | 待提交 | Windows UI 与交互 | 最大化或全屏时将主窗口与设置窗口关闭按钮热区延伸至最右上角盲点 |
-| P008 | 已应用 | 2026-11-15 | 待提交 | UI 与会话创建 | Workspace 顶部标签栏右键 `+` 支持选择 Shell 新建标签页，且不应用默认文件夹与默认命令 |
+| P007 | 已应用 | 2026-11-15 | `7cccddc` | Windows UI 与交互 | 最大化或全屏时将主窗口与设置窗口关闭按钮热区延伸至最右上角盲点 |
+| P008 | 已应用 | 2026-11-15 | `7cccddc` | UI 与会话创建 | Workspace 顶部标签栏右键 `+` 支持选择 Shell 新建标签页，且不应用默认文件夹与默认命令 |
+| P009 | 已应用 | 2026-11-15 | 待提交 | 快捷键与设置 | 在快捷键设置、配置文件、Edit 菜单与终端中新增可自定义/解绑的复制（`edit.copy`）与粘贴（`edit.paste`）快捷键（含 `Insert` 键录制） |
 
 ---
 
@@ -190,6 +191,26 @@
 - **同步上游时的冲突处理原则**：
   - 合并 `internal/proto/proto.go`、`internal/daemon/sessions.go` 与 `tabs.go` 时，保留 `CreateParams.NoDefaults` 字段及其在 `Daemon.create` 的短路逻辑，以及 `topTabsBar` 中 `new-tab` 按钮的 `a.newTabShellMenu` 绑定；
   - 若上游修改 `hostShellOptions` 或 `newSessionOn` 参数结构，需同步调整 `newTabShellMenu` 与 `newSessionWithShell`。
+
+### P009：快捷键设置支持复制与粘贴（Copy / Paste）
+
+- **日期**：2026-11-15
+- **目的**：在“设置 → 快捷键”（`Settings → Keyboard`）与 `keybind` 配置中补齐“复制（Copy）”和“粘贴（Paste）”的可自定义/解绑快捷键项，并使其在菜单栏、终端窗格、Quick Terminal、文本输入框及浏览器窗格中协同生效。
+- **改动清单**：
+  1. **动作定义与国际化（`internal/actions/actions.go`、`locales/{en,zh-Hans,ja}.json`、`locales/catalog_gen.go`、`settings_search.go`、`palette.go`）**：
+     - 在 `actions.All` 的 `Edit` 菜单分组中新增 `edit.copy`（macOS 默认 `CmdOrCtrl+C`，`pcKeys` 默认 `Ctrl+Shift+C`）与 `edit.paste`（macOS 默认 `CmdOrCtrl+V`，`pcKeys` 默认 `Ctrl+Shift+V`），并在 `words` 补充 `insert` 显示名；
+     - 在 `locales/{en,zh-Hans,ja}.json` 新增 `actionCopy` / `actionPaste` 并运行 `go tool mygo generate` 重新生成 `locales/catalog_gen.go`；在 `settings_search.go` 补充检索关键词；在 `palette.go` 过滤这两个依赖当前焦点的 Edit 角色动作。
+  2. **快捷键录制与配置序列化（`settings_view.go`、`internal/settings/config.go`）**：
+     - `settings_view.go` 的 `keyNames` 新增 `ui.KeyInsert: "Insert"`，并在 `recordKey` 允许仅带 `Shift` 修饰的 `Shift+Insert` 录制；
+     - `internal/settings/config.go` 的 `accelerator` 支持 `"insert"` 规范化为 `"Insert"`。
+  3. **Edit 菜单与终端键位联动（`actions.go`、`app.go`）**：
+     - 在 `actions.go` 新增 `App.editRoleItem`（复用 `RoleCopy` / `RolePaste`，在未配置或解绑时传入 `"none"` 避免 `mygo` 回落为默认 `CmdOrCtrl+C/V`）、共享 `parseAccelerator` 辅助函数（供 `menuShortcut` 与终端键位共用）及 `termKeybinds`（在自定义或解绑时移除主非 performable 默认绑定、按需注入新绑定并保留 Windows 下 `Ctrl+C` 的 performable SIGINT 退避行为）；
+     - 在 `app.go` 的 `termOptions` 注入 `termKeybinds` 并在 `apply` 的 `anew` 条件监听 `edit.copy` / `edit.paste` 变更以刷新在线终端实例。
+  4. **测试（`internal/settings/config_test.go`、`settings_test.go`）**：
+     - 在 `TestKeybinds` 补充 `edit.copy` / `edit.paste`（含 `shift+insert`）配置往返测试；新增 `TestCopyPasteShortcuts` 覆盖设置页展示、设置搜索、`Shift+Insert`/`Alt+C` 录制持久化、菜单角色加速键、`termKeybinds` 及解绑行为；同步调整 `TestRecordShortcut` 测试视口高度（`1200`）以容纳新增行。
+- **同步上游时的冲突处理原则**：
+  - 合并 `internal/actions/actions.go`、`actions.go`、`app.go` 与 `locales/*.json` 时，保留 `edit.copy` / `edit.paste`、`editRoleItem` 与 `termKeybinds`；
+  - 若上游修改 `Edit` 菜单项构造或 `termOptions` 参数，需保持 `RoleCopy` / `RolePaste` 对 `a.accelerator` 的引用，并在 `anew` 中继续追踪 `edit.copy` / `edit.paste` 变更，然后重新执行 `go tool mygo generate`。
 
 ---
 

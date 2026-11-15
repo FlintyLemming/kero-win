@@ -130,6 +130,8 @@ var actionWords = map[string]string{
 	"pane.restart":        "rerun relaunch reload reset shell",
 	"pane.close":          "pane remove kill exit",
 	"session.close":       "remove kill exit end tab",
+	"edit.copy":           "copy clipboard selection",
+	"edit.paste":          "paste clipboard",
 	"find.open":           "search look up text grep",
 	"find.next":           "search again",
 	"find.previous":       "search again back",

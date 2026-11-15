@@ -71,6 +71,9 @@ func (a *App) paletteItems() []paletteItem {
 			run: func() { a.openBrowser(q) }})
 	}
 	for _, act := range actions.All {
+		if act.ID == "edit.copy" || act.ID == "edit.paste" {
+			continue
+		}
 		id := act.ID
 		cmds = append(cmds, paletteItem{title: strings.TrimSuffix(actionTitle(act.ID), "…"), keys: actions.Glyphs(actions.Keys(act, a.set.Shortcuts)),
 			words: act.Title + " " + actionWords[id], run: func() { a.run(id, nil) }})

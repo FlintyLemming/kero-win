@@ -884,6 +884,10 @@ func (a *App) termOptions(id string, conn *gated) terminal.Options {
 	if a.set.CopyOnSelect {
 		o.CopyOnSelect = terminal.CopyOnSelectClipboard
 	}
+	if binds, ok := termKeybinds(a.set.Shortcuts); ok {
+		o.Keybinds = binds
+		o.NoDefaultKeybinds = true
+	}
 	// Files and images pasted into, or dropped on, a pane of another
 	// machine go there; a local pane's image alone pastes as the path of
 	// a file with it.
@@ -927,7 +931,8 @@ func (a *App) apply(s settings.Settings, save bool) {
 		!slices.Equal(old.FontFeatures, s.FontFeatures)
 	themes := old.LightTheme != s.LightTheme || old.DarkTheme != s.DarkTheme
 	anew := old.Cursor != s.Cursor || old.CursorBlink != s.CursorBlink || old.OptionAsAlt != s.OptionAsAlt ||
-		old.Clipboard != s.Clipboard || old.RightClick != s.RightClick || old.PaddingColor != s.PaddingColor
+		old.Clipboard != s.Clipboard || old.RightClick != s.RightClick || old.PaddingColor != s.PaddingColor ||
+		old.Shortcuts["edit.copy"] != s.Shortcuts["edit.copy"] || old.Shortcuts["edit.paste"] != s.Shortcuts["edit.paste"]
 	light, dark := a.termThemes()
 	retune := func(t *terminal.Terminal) {
 		if font {

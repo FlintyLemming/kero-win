@@ -246,6 +246,26 @@ func (msgs Messages) ActionZoomPane() string {
 	return Catalog.Format(msgs.locale, "actionZoomPane", nil)
 }
 
+// ActionCopy says "Copy"
+// in the language the app shows.
+func ActionCopy() string { return In(i18n.Locale()).ActionCopy() }
+
+// ActionCopy says "Copy"
+// in the language of msgs.
+func (msgs Messages) ActionCopy() string {
+	return Catalog.Format(msgs.locale, "actionCopy", nil)
+}
+
+// ActionPaste says "Paste"
+// in the language the app shows.
+func ActionPaste() string { return In(i18n.Locale()).ActionPaste() }
+
+// ActionPaste says "Paste"
+// in the language of msgs.
+func (msgs Messages) ActionPaste() string {
+	return Catalog.Format(msgs.locale, "actionPaste", nil)
+}
+
 // ActionFind says "Find…"
 // in the language the app shows.
 func ActionFind() string { return In(i18n.Locale()).ActionFind() }

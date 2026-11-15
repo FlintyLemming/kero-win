@@ -78,6 +78,13 @@
 - **右键菜单选择 Shell**：在顶部标签页（`top-tabs`）模式下，右键点击 Workspace 标签栏右侧的 `+` 新建标签页按钮，会弹出目标主机可用的 Shell 菜单（包含自动发现的 PowerShell / Command Prompt / Bash / WSL / macOS / Linux Shell 等，以及本地自定义 `Shell` 设置项）。
 - **纯净启动，不应用默认文件夹与默认命令**：通过该菜单选择 Shell 新建标签页时，会显式跳过应用级默认目录设置（`NewSessionDir` / `NewSessionPath`）以及 Workspace 级默认文件夹（`Dir`）、默认命令（`Command`）和默认 Shell（`Shell`），直接以所选 Shell 在主目录中启动新会话；左键点击 `+` 仍按原有默认配置创建标签页。
 
+### 10. 快捷键设置支持复制与粘贴（Copy / Paste）
+
+- **Keyboard 设置页新增复制 / 粘贴配置项**：在 `internal/actions/actions.go` 的 `Edit` 分组中新增 `edit.copy`（复制，macOS 默认 `CmdOrCtrl+C`、Windows / Linux 默认 `Ctrl+Shift+C`）与 `edit.paste`（粘贴，macOS 默认 `CmdOrCtrl+V`、Windows / Linux 默认 `Ctrl+Shift+V`），支持在 **设置 → 快捷键**、设置搜索及配置文件 `keybind` 中自由修改、重置、解绑，并新增 `Insert` 键（含 `Shift+Insert`、`Ctrl+Insert`）的录制、显示与配置序列化支持。
+- **全场景协同生效**：
+  - **终端窗格与 Quick Terminal**：自定义复制/粘贴快捷键会同步写入 `terminal.Options.Keybinds`（`termKeybinds`）覆盖默认主快捷键并即时刷新菜单与终端上下文菜单显示，同时在 Windows 上保留仅选中文本时才复制、未选中时仍发送 SIGINT 的 `Ctrl+C` 降级行为；
+  - **菜单栏、文本输入框与浏览器窗格**：Edit 菜单的 `RoleCopy` / `RolePaste` 自动跟随所配快捷键（解绑时不回落回系统默认键位，也不拦截正在录制中的快捷键输入）。
+
 ## 版本号与 Tag 规则
 
 为了在定期同步上游的同时清晰标识每次自用构建，并兼容 `mygo` 与 `.github/workflows/release.yml` / `internal/update` 的格式校验，版本与 Tag 统一采用：
