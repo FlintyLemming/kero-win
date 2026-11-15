@@ -142,6 +142,7 @@ type App struct {
 	confirm      *confirmation
 	wtAsk        *worktreeAsk
 	cmdAsk       *projectCommandAsk
+	wsAsk        *workspaceAsk
 	sideDrag     float32 // the width as a drag of the sidebar's edge began
 	pendingToast string
 	// later are actions that change what the view is building, run once

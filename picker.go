@@ -28,6 +28,7 @@ type folderPicker struct {
 	hidden bool
 	scroll ui.ScrollState
 	reveal bool // the chosen folder scrolls into view, once
+	onPick func(h *host, dir string)
 }
 
 // pickerItem is a folder the picker offers.
@@ -39,12 +40,25 @@ type pickerItem struct {
 // openProjectOn lists a host's folders, from its home, to open a project
 // in one.
 func (a *App) openProjectOn(h *host) {
+	a.pickFolderOn(h, nil)
+}
+
+// pickFolderOn lists a host's folders, from its home, and calls onPick
+// when a folder is chosen (or opens a workspace when onPick is nil).
+func (a *App) pickFolderOn(h *host, onPick func(h *host, dir string)) {
 	if h.cl == nil {
 		a.toast(locales.HostNotConnected(h.name))
 		return
 	}
-	a.picker = folderPicker{open: true, host: h}
+	a.picker = folderPicker{open: true, host: h, onPick: onPick}
 	a.pickerGo("~")
+}
+
+func (a *App) pickerHostTitle(label string) string {
+	if a.picker.onPick != nil {
+		return locales.PickerChooseTitle(label)
+	}
+	return locales.PickerTitle(label)
 }
 
 // pickerGo lists a folder of the picker's host.
@@ -133,14 +147,14 @@ func (a *App) pickerView(c *ui.Context, pal *palette) {
 	ui.DialogBase(c.Key("picker"), &p.open, func(backdrop, panel ui.Element) {
 		backdrop.Background(pal.overlay).Justify(ui.Start).Padding(84, 0, 0, 0)
 		floating(panel.Width(600).MaxHeight(500).Radius(14).Background(pal.popover), pal).Clip().
-			Label(locales.PickerTitle(h.label()))
+			Label(a.pickerHostTitle(h.label()))
 		ui.Row(c).Height(42).Shrink(0).Padding(0, 16).Gap(8).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, hostIcon).Size(14, 14).TextColor(pal.hostColor(h))
 			// The machine it lists, which any other can take the place of.
 			if len(a.hosts) > 1 {
 				a.pickerHosts(c, pal, h)
 			} else {
-				ui.Text(c, locales.PickerTitle(h.label())).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine().Shrink(0)
+				ui.Text(c, a.pickerHostTitle(h.label())).FontSize(13).FontWeight(600).TextColor(pal.text).SingleLine().Shrink(0)
 			}
 			if p.list != nil {
 				ui.Text(c, h.shortDir(p.list.Dir)).FontSize(12.5).TextColor(pal.textFaint).SingleLine().Ellipsis("…").MinWidth(0).Shrink(1)
@@ -234,16 +248,23 @@ func (a *App) pickerView(c *ui.Context, pal *palette) {
 			}
 		})
 	})
+	onPick := p.onPick
 	switch {
 	case openDir != "":
 		p.open = false
-		a.openProjectAt(h, openDir)
+		a.picker = folderPicker{}
+		if onPick != nil {
+			onPick(h, openDir)
+		} else {
+			a.openProjectAt(h, openDir)
+		}
+		return
 	case goTo != "":
 		a.pickerGo(goTo)
 	}
 	if !p.open {
 		a.picker = folderPicker{}
-		if openDir == "" {
+		if onPick == nil {
 			a.focusTerminal()
 		}
 	}
@@ -269,7 +290,7 @@ func (a *App) pickerHosts(c *ui.Context, pal *palette, shown *host) {
 		for _, h := range a.hosts {
 			label := h.label()
 			b := ui.ButtonBase(c.Key("host-"+h.name)).Height(24).Padding(0, 8).Radius(6).AlignItems(ui.Center).
-				Label(locales.PickerTitle(label))
+				Label(a.pickerHostTitle(label))
 			fg := pal.textMuted
 			switch {
 			case h == shown:
@@ -285,7 +306,7 @@ func (a *App) pickerHosts(c *ui.Context, pal *palette, shown *host) {
 				ui.Text(c, label).FontSize(12.5).FontWeight(600).TextColor(fg).SingleLine()
 			})
 			if b.Clicked() && h != shown {
-				a.openProjectOn(h)
+				a.pickFolderOn(h, a.picker.onPick)
 			}
 		}
 	})

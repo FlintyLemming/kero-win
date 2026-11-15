@@ -58,6 +58,16 @@
 - **独立更新源与签名校验**：将 [mygo.json](mygo.json)、[internal/update/update.go](internal/update/update.go) 及服务端安装脚本（[scripts/install-server.sh](scripts/install-server.sh)、[scripts/install-server.ps1](scripts/install-server.ps1)）中的 Release 仓库改为 `FlintyLemming/kero-win`，并替换为独立的 Ed25519 更新签名公钥（私钥通过 GitHub Actions Secret `MYGO_UPDATER_PRIVATE_KEY` 注入）。
 - **纯手动 Windows 桌面端发布**：[.github/workflows/release.yml](.github/workflows/release.yml) 取消 `push: tags` 自动触发，仅保留 `workflow_dispatch` 手动触发；仅构建并校验 Windows 桌面端（`windows/amd64`、`windows/arm64`），移除 macOS / Linux 桌面端与 `kero-server` 打包签名任务，并将 `test` 任务限定为 `windows-latest`。[.github/workflows/ci.yml](.github/workflows/ci.yml) 将自动编译与测试限定为 `windows-latest`（仅执行 `go vet ./...`、`go test ./internal/...` 与 Windows `go build ./...`），移除跨平台 / `kero-server` 构建、安装脚本检查与自动调用 `server.yml` 的打包流程，并删除 `.github/workflows/server.yml`。同时修复 `internal/daemon` 与 `internal/git` 测试在 Windows 下的权限位、跨盘符路径、盘符前缀与符号链接兼容性。
 
+### 7. 左上角加号改为“新建工作区（Workspace）”并支持无目录创建
+
+- **新建工作区弹窗（`New Workspace…`）**：将侧边栏左上角 `+` 按钮（含展开侧边栏与标准模式下折叠侧边栏，对应新增动作 `project.new`、快捷键 `CmdOrCtrl+Shift+N` / `Ctrl+Shift+N`）从“新建会话”重定义为“新建工作区”，支持：
+  - **仅填名称无目录创建**：只需输入名称即可创建工作区，无需绑定文件夹；
+  - **可选文件夹**：可直接输入路径（支持本地 `~` 展开与校验），或通过`选择…`调用系统目录选择器（本地） / 内置目录选择器（远程主机），选定后在名称为空时自动回填目录名；
+  - **主机、默认 Shell 与默认命令**：支持在新建时直接选择目标主机（多主机环境）、默认 Shell 与默认启动命令，`project.create` 同步持久化 `Shell` 与 `Command`；
+  - **创建后自动进入工作状态**：工作区创建完成后自动在其中启动一个初始会话并选中。
+- **既有快捷入口保持不变**：左下角文件夹按钮保留为快捷“打开工作区（选目录）”，顶部标签页模式下标签栏右侧的 `+` 按钮保持为“在当前工作区新建会话”。
+- **全局文案统一**：将菜单、弹窗、侧边栏、设置页、设置搜索及目录选择器中原本面向用户的 `Project / 项目 / プロジェクト` 统一为 `Workspace / 工作区 / ワークスペース`（保留 `project.open` 动作 ID 以兼容既有快捷键覆盖）。
+
 ## 版本号与 Tag 规则
 
 为了在定期同步上游的同时清晰标识每次自用构建，并兼容 `mygo` 与 `.github/workflows/release.yml` / `internal/update` 的格式校验，版本与 Tag 统一采用：

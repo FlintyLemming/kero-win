@@ -23,11 +23,11 @@ type searchEntry struct {
 // language the app shows, as their rows are.
 func settingsIndex() []searchEntry {
 	entries := []searchEntry{
-		{"general", locales.SetNewSessionsStartIn(), "new-session-directory folder current project home custom tab"},
+		{"general", locales.SetNewSessionsStartIn(), "new-session-directory folder current workspace project home custom tab"},
 		{"general", locales.SetSessionName(), "session-name title sidebar focused lead folder pane"},
 		{"general", locales.SetSidebarRows(), "sidebar-rows compact detailed status message branch two lines"},
-		{"general", locales.SetSidebarCount(), "sidebar-session-count project sessions number count header"},
-		{"general", locales.SetTopTabs(), "top-tabs horizontal tabs project sidebar tabs layout"},
+		{"general", locales.SetSidebarCount(), "sidebar-session-count workspace project sessions number count header"},
+		{"general", locales.SetTopTabs(), "top-tabs horizontal tabs workspace project sidebar tabs layout"},
 		{"general", locales.SetFocusFollowsMouse(), "focus-follows-mouse hover pointer niri hyprland sloppy"},
 		{"general", locales.SetAskBeforeClosing(), "confirm-close quit kill"},
 		{"general", locales.SetRestoreSessions(), "restore-sessions reboot persist"},
@@ -120,7 +120,8 @@ var actionWords = map[string]string{
 	"session.new":         "create add tab terminal shell",
 	"session.newHome":     "create add tab terminal shell home directory ~",
 	"session.newWorktree": "create add worktree branch checkout isolate parallel",
-	"project.open":        "folder directory repo repository workspace add",
+	"project.new":         "workspace project add create folder",
+	"project.open":        "folder directory repo repository workspace project add",
 	"palette.open":        "switch jump search find command palette",
 	"session.attention":   "waiting blocked attention notification needs input",
 	"session.next":        "switch tab forward",

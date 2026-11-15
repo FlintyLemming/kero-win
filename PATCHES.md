@@ -36,7 +36,8 @@
 | P002 | 已应用 | 2026-11-15 | `ee669f1` | 仓库治理 | 配置 `Upstream`、更新 `README.md`、建立台账 `PATCHES.md`、设定 `patch` 版本规则 |
 | P003 | 已应用 | 2026-11-15 | `c4c5218` | UI 与项目配置 | 恢复 1.x 风格项目侧边栏 + 顶部横向标签页（`top-tabs`），新增项目级默认 Shell 与默认命令 |
 | P004 | 已应用 | 2026-11-15 | `b057a97` | UI 与交互 | 为顶部会话标签页增加鼠标中键关闭功能 |
-| P005 | 已应用 | 2026-11-15 | 待提交 | 更新源与 CI/CD | 更新源与公钥切换到 `FlintyLemming/kero-win`；发布改为纯手动 Windows 桌面端；CI/测试限定 Windows 并修复 Windows 测试兼容性 |
+| P005 | 已应用 | 2026-11-15 | `ee6979f` | 更新源与 CI/CD | 更新源与公钥切换到 `FlintyLemming/kero-win`；发布改为纯手动 Windows 桌面端；CI/测试限定 Windows 并修复 Windows 测试兼容性 |
+| P006 | 已应用 | 2026-11-15 | 待提交 | UI 与工作区管理 | 左上角 `+` 改为新建工作区弹窗（支持无目录创建、Shell/命令预配置），全量统一 Workspace 术语 |
 
 ---
 
@@ -133,6 +134,28 @@
   - `mygo.json`、`internal/update/update.go`、`scripts/install-server.*` 中保持 `FlintyLemming/kero-win` 与自有 `publicKey` 不被上游覆盖；
   - `.github/workflows/release.yml` 与 `.github/workflows/ci.yml` 保持纯手动 `workflow_dispatch` 发布、Windows-only 构建与测试策略；若上游更新 `.github/workflows/server.yml`，保持删除状态（`git rm`）；
   - 上述 `internal/*/*_test.go` 合并时保留 Windows 兼容断言。
+
+### P006：左上角 `+` 改为新建工作区与 Workspace 术语统一
+
+- **日期**：2026-11-15
+- **目的**：将左上角 `+` 从直接新建会话改为“新建工作区”，允许用户不选目录仅凭名称（或可选关联文件夹）并预设默认 Shell / 命令创建工作区，同时统一桌面端术语为 Workspace / 工作区 / ワークスペース。
+- **改动清单**：
+  1. **新建工作区弹窗与逻辑（`workspace.go`、`app.go`、`picker.go`）**：
+     - 在 `App` 新增 `wsAsk *workspaceAsk`，新增 `workspace.go` 实现 `startNewWorkspace`、`workspaceView`、`submitNewWorkspace`、`chooseWorkspaceFolder` 与 `createWorkspace`；
+     - 支持名称创建（无目录）及可选目录创建（本地 `mygo.Dialog.Open`，远程通过 `picker.go` 新增的 `folderPicker.onPick` / `pickFolderOn` 回调选目录并返回弹窗，保持表单状态）；
+     - 支持多主机切换、默认 Shell 选择（`hostShellOptions`）、默认命令输入，并在创建后自动在其中启动初始会话并选中。
+  2. **按钮重定义与界面适配（`view.go`、`panes.go`、`palette.go`）**：
+     - 将展开侧边栏与标准模式折叠侧边栏的左上角 `+` 按钮从 `session.new` 改为 `project.new`（`startNewWorkspace(nil)`）；TopTabs 标签栏右侧 `+` 与左下角打开目录按钮保持原功能；
+     - 在 `view.go`（拖拽防护、TopTabs 空工作区图标 `terminalIcon`）与 `palette.go`（远程无目录工作区详情格式、`wsAsk` 打开时禁用全局快捷键）补齐边界处理。
+  3. **动作、Daemon 与本地化（`internal/actions/actions.go`、`actions.go`、`settings_search.go`、`internal/daemon/rpc.go`、`locales/*.json`、`locales/catalog_gen.go`）**：
+     - 新增 `project.new`（`CmdOrCtrl+Shift+N` / `Ctrl+Shift+N`）并将 `project.open` 文案改为 `Open Workspace…`（保留原 ID）；
+     - `internal/daemon/rpc.go` 的 `project.create` 支持在创建时直接保存 `Command` 与 `Shell`；
+     - 统一 `locales/en.json`、`locales/zh-Hans.json`、`locales/ja.json` 中的 `Project / 项目 / プロジェクト` 术语为 Workspace，并新增弹窗词条，重新生成 `locales/catalog_gen.go`。
+  4. **测试（`workspace_test.go`、`internal/daemon/project_test.go`）**：
+     - 新增 `workspace_test.go` 与 `TestProjectCreateCommandAndShell` 覆盖上述交互、校验、RPC 参数与远程目录回填。
+- **同步上游时的冲突处理原则**：
+  - `workspace.go` 与 `workspace_test.go` 为独立新增文件，合入上游后按需适配内部接口即可；
+  - 合并 `view.go`、`panes.go`、`picker.go`、`actions.go`、`internal/actions/actions.go`、`internal/daemon/rpc.go` 与 `locales/*.json` 时，保留左上角 `+` 的 `project.new` 绑定、`pickFolderOn` 回调、`project.create` 的 `Command`/`Shell` 字段保存及 `locales` 中的 Workspace 文案，并用 `go tool mygo generate` 重新生成 `locales/catalog_gen.go`。
 
 ---
 

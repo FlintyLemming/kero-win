@@ -96,11 +96,21 @@ func (msgs Messages) ActionNewSessionWorktree() string {
 	return Catalog.Format(msgs.locale, "actionNewSessionWorktree", nil)
 }
 
-// ActionOpenProject says "Open Project…"
+// ActionNewWorkspace says "New Workspace…"
+// in the language the app shows.
+func ActionNewWorkspace() string { return In(i18n.Locale()).ActionNewWorkspace() }
+
+// ActionNewWorkspace says "New Workspace…"
+// in the language of msgs.
+func (msgs Messages) ActionNewWorkspace() string {
+	return Catalog.Format(msgs.locale, "actionNewWorkspace", nil)
+}
+
+// ActionOpenProject says "Open Workspace…"
 // in the language the app shows.
 func ActionOpenProject() string { return In(i18n.Locale()).ActionOpenProject() }
 
-// ActionOpenProject says "Open Project…"
+// ActionOpenProject says "Open Workspace…"
 // in the language of msgs.
 func (msgs Messages) ActionOpenProject() string {
 	return Catalog.Format(msgs.locale, "actionOpenProject", nil)
@@ -882,11 +892,11 @@ func (msgs Messages) NotifyDoneTitle(name string) string {
 	return Catalog.Format(msgs.locale, "notifyDoneTitle", map[string]any{"name": name})
 }
 
-// OpenProjectTitle says "Open Project"
+// OpenProjectTitle says "Open Workspace"
 // in the language the app shows.
 func OpenProjectTitle() string { return In(i18n.Locale()).OpenProjectTitle() }
 
-// OpenProjectTitle says "Open Project"
+// OpenProjectTitle says "Open Workspace"
 // in the language of msgs.
 func (msgs Messages) OpenProjectTitle() string {
 	return Catalog.Format(msgs.locale, "openProjectTitle", nil)
@@ -968,13 +978,13 @@ func (msgs Messages) ConfirmCloseProjectDetail(count int) string {
 	return Catalog.Format(msgs.locale, "confirmCloseProjectDetail", map[string]any{"count": count})
 }
 
-// ConfirmCloseAllSessionsDetail says "{count, plural, one {The project stays; its # session ends, with what runs in it.} other {The project stays; its # se…"
+// ConfirmCloseAllSessionsDetail says "{count, plural, one {The workspace stays; its # session ends, with what runs in it.} other {The workspace stays; its …"
 // in the language the app shows.
 func ConfirmCloseAllSessionsDetail(count int) string {
 	return In(i18n.Locale()).ConfirmCloseAllSessionsDetail(count)
 }
 
-// ConfirmCloseAllSessionsDetail says "{count, plural, one {The project stays; its # session ends, with what runs in it.} other {The project stays; its # se…"
+// ConfirmCloseAllSessionsDetail says "{count, plural, one {The workspace stays; its # session ends, with what runs in it.} other {The workspace stays; its …"
 // in the language of msgs.
 func (msgs Messages) ConfirmCloseAllSessionsDetail(count int) string {
 	return Catalog.Format(msgs.locale, "confirmCloseAllSessionsDetail", map[string]any{"count": count})
@@ -1144,21 +1154,21 @@ func (msgs Messages) SidebarExpand() string {
 	return Catalog.Format(msgs.locale, "sidebarExpand", nil)
 }
 
-// SidebarCloseProjectMenu says "Close Project…"
+// SidebarCloseProjectMenu says "Close Workspace…"
 // in the language the app shows.
 func SidebarCloseProjectMenu() string { return In(i18n.Locale()).SidebarCloseProjectMenu() }
 
-// SidebarCloseProjectMenu says "Close Project…"
+// SidebarCloseProjectMenu says "Close Workspace…"
 // in the language of msgs.
 func (msgs Messages) SidebarCloseProjectMenu() string {
 	return Catalog.Format(msgs.locale, "sidebarCloseProjectMenu", nil)
 }
 
-// SidebarCloseProject says "Close Project"
+// SidebarCloseProject says "Close Workspace"
 // in the language the app shows.
 func SidebarCloseProject() string { return In(i18n.Locale()).SidebarCloseProject() }
 
-// SidebarCloseProject says "Close Project"
+// SidebarCloseProject says "Close Workspace"
 // in the language of msgs.
 func (msgs Messages) SidebarCloseProject() string {
 	return Catalog.Format(msgs.locale, "sidebarCloseProject", nil)
@@ -1264,11 +1274,11 @@ func (msgs Messages) SessionMarkRead() string {
 	return Catalog.Format(msgs.locale, "sessionMarkRead", nil)
 }
 
-// SessionMoveToProject says "Move to Project"
+// SessionMoveToProject says "Move to Workspace"
 // in the language the app shows.
 func SessionMoveToProject() string { return In(i18n.Locale()).SessionMoveToProject() }
 
-// SessionMoveToProject says "Move to Project"
+// SessionMoveToProject says "Move to Workspace"
 // in the language of msgs.
 func (msgs Messages) SessionMoveToProject() string {
 	return Catalog.Format(msgs.locale, "sessionMoveToProject", nil)
@@ -2016,11 +2026,11 @@ func (msgs Messages) SetDirCurrent() string {
 	return Catalog.Format(msgs.locale, "setDirCurrent", nil)
 }
 
-// SetDirProject says "Project"
+// SetDirProject says "Workspace"
 // in the language the app shows.
 func SetDirProject() string { return In(i18n.Locale()).SetDirProject() }
 
-// SetDirProject says "Project"
+// SetDirProject says "Workspace"
 // in the language of msgs.
 func (msgs Messages) SetDirProject() string {
 	return Catalog.Format(msgs.locale, "setDirProject", nil)
@@ -2166,11 +2176,11 @@ func (msgs Messages) SetSidebarCount() string {
 	return Catalog.Format(msgs.locale, "setSidebarCount", nil)
 }
 
-// SetSidebarCountDetail says "Show, beside each project’s name, how many sessions it holds."
+// SetSidebarCountDetail says "Show, beside each workspace’s name, how many sessions it holds."
 // in the language the app shows.
 func SetSidebarCountDetail() string { return In(i18n.Locale()).SetSidebarCountDetail() }
 
-// SetSidebarCountDetail says "Show, beside each project’s name, how many sessions it holds."
+// SetSidebarCountDetail says "Show, beside each workspace’s name, how many sessions it holds."
 // in the language of msgs.
 func (msgs Messages) SetSidebarCountDetail() string {
 	return Catalog.Format(msgs.locale, "setSidebarCountDetail", nil)
@@ -5462,14 +5472,24 @@ func (msgs Messages) PasteUploading(host string) string {
 	return Catalog.Format(msgs.locale, "pasteUploading", map[string]any{"host": host})
 }
 
-// PickerTitle says "Open Project on {host}"
+// PickerTitle says "Open Workspace on {host}"
 // in the language the app shows.
 func PickerTitle(host string) string { return In(i18n.Locale()).PickerTitle(host) }
 
-// PickerTitle says "Open Project on {host}"
+// PickerTitle says "Open Workspace on {host}"
 // in the language of msgs.
 func (msgs Messages) PickerTitle(host string) string {
 	return Catalog.Format(msgs.locale, "pickerTitle", map[string]any{"host": host})
+}
+
+// PickerChooseTitle says "Choose Folder on {host}"
+// in the language the app shows.
+func PickerChooseTitle(host string) string { return In(i18n.Locale()).PickerChooseTitle(host) }
+
+// PickerChooseTitle says "Choose Folder on {host}"
+// in the language of msgs.
+func (msgs Messages) PickerChooseTitle(host string) string {
+	return Catalog.Format(msgs.locale, "pickerChooseTitle", map[string]any{"host": host})
 }
 
 // PickerPlaceholder says "Filter folders, or type a path: ~/code"
@@ -6070,11 +6090,11 @@ func (msgs Messages) SetTopTabs() string {
 	return Catalog.Format(msgs.locale, "setTopTabs", nil)
 }
 
-// SetTopTabsDetail says "List only projects in the sidebar, and show the active project’s sessions as tabs along the top."
+// SetTopTabsDetail says "List only workspaces in the sidebar, and show the active workspace’s sessions as tabs along the top."
 // in the language the app shows.
 func SetTopTabsDetail() string { return In(i18n.Locale()).SetTopTabsDetail() }
 
-// SetTopTabsDetail says "List only projects in the sidebar, and show the active project’s sessions as tabs along the top."
+// SetTopTabsDetail says "List only workspaces in the sidebar, and show the active workspace’s sessions as tabs along the top."
 // in the language of msgs.
 func (msgs Messages) SetTopTabsDetail() string {
 	return Catalog.Format(msgs.locale, "setTopTabsDetail", nil)
@@ -6164,11 +6184,11 @@ func (msgs Messages) ProjectCommandTitle(name string) string {
 	return Catalog.Format(msgs.locale, "projectCommandTitle", map[string]any{"name": name})
 }
 
-// ProjectCommandDetail says "Runs when a new session starts in this project. Leave empty to start the default shell."
+// ProjectCommandDetail says "Runs when a new session starts in this workspace. Leave empty to start the default shell."
 // in the language the app shows.
 func ProjectCommandDetail() string { return In(i18n.Locale()).ProjectCommandDetail() }
 
-// ProjectCommandDetail says "Runs when a new session starts in this project. Leave empty to start the default shell."
+// ProjectCommandDetail says "Runs when a new session starts in this workspace. Leave empty to start the default shell."
 // in the language of msgs.
 func (msgs Messages) ProjectCommandDetail() string {
 	return Catalog.Format(msgs.locale, "projectCommandDetail", nil)
@@ -6236,4 +6256,114 @@ func ShellCommandPrompt() string { return In(i18n.Locale()).ShellCommandPrompt()
 // in the language of msgs.
 func (msgs Messages) ShellCommandPrompt() string {
 	return Catalog.Format(msgs.locale, "shellCommandPrompt", nil)
+}
+
+// WorkspaceNewTitle says "New Workspace"
+// in the language the app shows.
+func WorkspaceNewTitle() string { return In(i18n.Locale()).WorkspaceNewTitle() }
+
+// WorkspaceNewTitle says "New Workspace"
+// in the language of msgs.
+func (msgs Messages) WorkspaceNewTitle() string {
+	return Catalog.Format(msgs.locale, "workspaceNewTitle", nil)
+}
+
+// WorkspaceNewDetail says "Group sessions by name, optionally backed by a folder."
+// in the language the app shows.
+func WorkspaceNewDetail() string { return In(i18n.Locale()).WorkspaceNewDetail() }
+
+// WorkspaceNewDetail says "Group sessions by name, optionally backed by a folder."
+// in the language of msgs.
+func (msgs Messages) WorkspaceNewDetail() string {
+	return Catalog.Format(msgs.locale, "workspaceNewDetail", nil)
+}
+
+// WorkspaceHostLabel says "Host"
+// in the language the app shows.
+func WorkspaceHostLabel() string { return In(i18n.Locale()).WorkspaceHostLabel() }
+
+// WorkspaceHostLabel says "Host"
+// in the language of msgs.
+func (msgs Messages) WorkspaceHostLabel() string {
+	return Catalog.Format(msgs.locale, "workspaceHostLabel", nil)
+}
+
+// WorkspaceNameLabel says "Name"
+// in the language the app shows.
+func WorkspaceNameLabel() string { return In(i18n.Locale()).WorkspaceNameLabel() }
+
+// WorkspaceNameLabel says "Name"
+// in the language of msgs.
+func (msgs Messages) WorkspaceNameLabel() string {
+	return Catalog.Format(msgs.locale, "workspaceNameLabel", nil)
+}
+
+// WorkspaceNamePlaceholder says "Workspace name"
+// in the language the app shows.
+func WorkspaceNamePlaceholder() string { return In(i18n.Locale()).WorkspaceNamePlaceholder() }
+
+// WorkspaceNamePlaceholder says "Workspace name"
+// in the language of msgs.
+func (msgs Messages) WorkspaceNamePlaceholder() string {
+	return Catalog.Format(msgs.locale, "workspaceNamePlaceholder", nil)
+}
+
+// WorkspaceFolderLabel says "Folder (optional)"
+// in the language the app shows.
+func WorkspaceFolderLabel() string { return In(i18n.Locale()).WorkspaceFolderLabel() }
+
+// WorkspaceFolderLabel says "Folder (optional)"
+// in the language of msgs.
+func (msgs Messages) WorkspaceFolderLabel() string {
+	return Catalog.Format(msgs.locale, "workspaceFolderLabel", nil)
+}
+
+// WorkspaceFolderPlaceholder says "Optional path, or choose…"
+// in the language the app shows.
+func WorkspaceFolderPlaceholder() string { return In(i18n.Locale()).WorkspaceFolderPlaceholder() }
+
+// WorkspaceFolderPlaceholder says "Optional path, or choose…"
+// in the language of msgs.
+func (msgs Messages) WorkspaceFolderPlaceholder() string {
+	return Catalog.Format(msgs.locale, "workspaceFolderPlaceholder", nil)
+}
+
+// WorkspaceCommandLabel says "Default command (optional)"
+// in the language the app shows.
+func WorkspaceCommandLabel() string { return In(i18n.Locale()).WorkspaceCommandLabel() }
+
+// WorkspaceCommandLabel says "Default command (optional)"
+// in the language of msgs.
+func (msgs Messages) WorkspaceCommandLabel() string {
+	return Catalog.Format(msgs.locale, "workspaceCommandLabel", nil)
+}
+
+// WorkspaceCreate says "Create"
+// in the language the app shows.
+func WorkspaceCreate() string { return In(i18n.Locale()).WorkspaceCreate() }
+
+// WorkspaceCreate says "Create"
+// in the language of msgs.
+func (msgs Messages) WorkspaceCreate() string {
+	return Catalog.Format(msgs.locale, "workspaceCreate", nil)
+}
+
+// WorkspaceNeedNameOrFolder says "Enter a name or choose a folder."
+// in the language the app shows.
+func WorkspaceNeedNameOrFolder() string { return In(i18n.Locale()).WorkspaceNeedNameOrFolder() }
+
+// WorkspaceNeedNameOrFolder says "Enter a name or choose a folder."
+// in the language of msgs.
+func (msgs Messages) WorkspaceNeedNameOrFolder() string {
+	return Catalog.Format(msgs.locale, "workspaceNeedNameOrFolder", nil)
+}
+
+// WorkspaceInvalidFolder says "Folder does not exist."
+// in the language the app shows.
+func WorkspaceInvalidFolder() string { return In(i18n.Locale()).WorkspaceInvalidFolder() }
+
+// WorkspaceInvalidFolder says "Folder does not exist."
+// in the language of msgs.
+func (msgs Messages) WorkspaceInvalidFolder() string {
+	return Catalog.Format(msgs.locale, "workspaceInvalidFolder", nil)
 }

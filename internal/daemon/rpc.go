@@ -424,7 +424,13 @@ func (d *Daemon) call(c *controlConn, method string, raw json.RawMessage) (any, 
 				d.mu.Unlock()
 				return existing, nil
 			}
-			pr := proto.Project{ID: newID(), Name: name, Dir: dir}
+			pr := proto.Project{
+				ID:      newID(),
+				Name:    name,
+				Dir:     dir,
+				Command: strings.TrimSpace(p.Command),
+				Shell:   strings.TrimSpace(p.Shell),
+			}
 			d.projects = append(d.projects, pr)
 			d.mu.Unlock()
 			d.changed()

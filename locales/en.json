@@ -6,7 +6,8 @@
   "actionNewSession": "New Session",
   "actionNewSessionHome": "New Session in Home",
   "actionNewSessionWorktree": "New Session in Worktree…",
-  "actionOpenProject": "Open Project…",
+  "actionNewWorkspace": "New Workspace…",
+  "actionOpenProject": "Open Workspace…",
   "actionGoToSession": "Go to Session…",
   "actionJumpToAttention": "Jump to Session Needing You",
   "actionNextSession": "Next Session",
@@ -91,7 +92,7 @@
   "notifyFailedTitle": "{name} failed",
   "notifyFailedBody": "{pane} stopped with an error",
   "notifyDoneTitle": "{name} is done",
-  "openProjectTitle": "Open Project",
+  "openProjectTitle": "Open Workspace",
   "openProjectMessage": "Choose a folder: its sessions are grouped under its name.",
   "newSessionFolderTitle": "New Sessions Start In",
   "newSessionFolderMessage": "Choose the folder new sessions start in.",
@@ -106,7 +107,7 @@
       }
     }
   },
-  "confirmCloseAllSessionsDetail": "{count, plural, one {The project stays; its # session ends, with what runs in it.} other {The project stays; its # sessions end, with what runs in them.}}",
+  "confirmCloseAllSessionsDetail": "{count, plural, one {The workspace stays; its # session ends, with what runs in it.} other {The workspace stays; its # sessions end, with what runs in them.}}",
   "@confirmCloseAllSessionsDetail": {
     "placeholders": {
       "count": {
@@ -157,8 +158,8 @@
   "sidebarNoSessions": "No sessions",
   "sidebarCollapse": "Collapse",
   "sidebarExpand": "Expand",
-  "sidebarCloseProjectMenu": "Close Project…",
-  "sidebarCloseProject": "Close Project",
+  "sidebarCloseProjectMenu": "Close Workspace…",
+  "sidebarCloseProject": "Close Workspace",
   "sidebarCloseAllSessions": "Close All Sessions",
   "sidebarMove": "Move",
   "sidebarMoveUp": "Move Up",
@@ -176,7 +177,7 @@
   "newSessionIn": "New Session in {project}",
   "sessionRename": "Rename",
   "sessionMarkRead": "Mark as Read",
-  "sessionMoveToProject": "Move to Project",
+  "sessionMoveToProject": "Move to Workspace",
   "sessionCopyId": "Copy Session ID",
   "sessionCopyDirectory": "Copy Directory",
   "sessionRevealIn": "Reveal in {app}",
@@ -344,7 +345,7 @@
   "setSessionsDetail": "Sessions keep running in the background when Kero quits; {action} ends them.",
   "setNewSessionsStartIn": "New sessions start in",
   "setDirCurrent": "Current Folder",
-  "setDirProject": "Project",
+  "setDirProject": "Workspace",
   "setDirHome": "Home",
   "setDirCustom": "Custom…",
   "setNewSessionFolderDetail": "Sessions on other hosts start in their home, as they do here when the folder is gone.",
@@ -359,7 +360,7 @@
   "setRowsDetailed": "Detailed",
   "setRowsCompact": "Compact",
   "setSidebarCount": "Session count",
-  "setSidebarCountDetail": "Show, beside each project’s name, how many sessions it holds.",
+  "setSidebarCountDetail": "Show, beside each workspace’s name, how many sessions it holds.",
   "setFocusFollowsMouse": "Focus follows mouse",
   "setFocusFollowsMouseDetail": "A pane takes the focus when the pointer moves into it, without a click.",
   "setAskBeforeClosing": "Ask before closing a running program",
@@ -992,8 +993,16 @@
       }
     }
   },
-  "pickerTitle": "Open Project on {host}",
+  "pickerTitle": "Open Workspace on {host}",
   "@pickerTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "pickerChooseTitle": "Choose Folder on {host}",
+  "@pickerChooseTitle": {
     "placeholders": {
       "host": {
         "type": "String"
@@ -1150,7 +1159,7 @@
   "toastGlobalShortcutFailed": "Couldn’t use {keys} for the quick terminal: {error}",
   "setShortcutGlobal": "Works in every app",
   "setTopTabs": "Top session tabs",
-  "setTopTabsDetail": "List only projects in the sidebar, and show the active project’s sessions as tabs along the top.",
+  "setTopTabsDetail": "List only workspaces in the sidebar, and show the active workspace’s sessions as tabs along the top.",
   "tabsCloseOthers": "Close Other Sessions",
   "tabsCloseRight": "Close Sessions to the Right",
   "sidebarSessionsCount": "{count, plural, one {# session} other {# sessions}}",
@@ -1173,7 +1182,7 @@
   "sidebarDefaultCommandMenu": "Default Command…",
   "sidebarDefaultCommandTip": "Default command: {command}",
   "projectCommandTitle": "Default Command for “{name}”",
-  "projectCommandDetail": "Runs when a new session starts in this project. Leave empty to start the default shell.",
+  "projectCommandDetail": "Runs when a new session starts in this workspace. Leave empty to start the default shell.",
   "projectCommandPlaceholder": "e.g. npm run dev",
   "sidebarDefaultShellMenu": "Default Shell",
   "sidebarDefaultShellAuto": "Default",
@@ -1193,5 +1202,16 @@
       }
     }
   },
-  "shellCommandPrompt": "Command Prompt"
+  "shellCommandPrompt": "Command Prompt",
+  "workspaceNewTitle": "New Workspace",
+  "workspaceNewDetail": "Group sessions by name, optionally backed by a folder.",
+  "workspaceHostLabel": "Host",
+  "workspaceNameLabel": "Name",
+  "workspaceNamePlaceholder": "Workspace name",
+  "workspaceFolderLabel": "Folder (optional)",
+  "workspaceFolderPlaceholder": "Optional path, or choose…",
+  "workspaceCommandLabel": "Default command (optional)",
+  "workspaceCreate": "Create",
+  "workspaceNeedNameOrFolder": "Enter a name or choose a folder.",
+  "workspaceInvalidFolder": "Folder does not exist."
 }

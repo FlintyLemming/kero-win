@@ -85,9 +85,14 @@ func (a *App) paletteItems() []paletteItem {
 	for _, p := range a.st.Projects {
 		id := p.ID
 		h := a.hostOf(id)
-		detail := h.shortDir(p.Dir)
-		if h.remote() {
-			detail = h.name + " · " + detail
+		var detail string
+		if p.Dir != "" {
+			detail = h.shortDir(p.Dir)
+			if h.remote() {
+				detail = h.name + " · " + detail
+			}
+		} else if h.remote() {
+			detail = h.name
 		}
 		cmds = append(cmds, paletteItem{title: locales.NewSessionIn(p.Name), detail: detail, words: en.NewSessionIn(p.Name), run: func() { a.newSession(id) }})
 	}
@@ -315,7 +320,7 @@ func confirmDialog(c *ui.Context, pal *palette, pending **confirmation) bool {
 
 // shortcuts are the window's keys that no menu item has.
 func (a *App) shortcuts(c *ui.Context) {
-	if a.pal.open || a.picker.open || a.confirm != nil || a.wtAsk != nil || a.cmdAsk != nil {
+	if a.pal.open || a.picker.open || a.confirm != nil || a.wtAsk != nil || a.cmdAsk != nil || a.wsAsk != nil {
 		return
 	}
 	keys := []ui.Key{ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5, ui.Key6, ui.Key7, ui.Key8, ui.Key9}

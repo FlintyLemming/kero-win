@@ -137,7 +137,7 @@ func (a *App) view(c *ui.Context) {
 	row.Children(func() {
 		w := a.chrome.sideW
 		side := ui.Row(c).Width(w).Shrink(0).AlignItems(ui.Stretch).ClipX()
-		if h := a.local(); h.conn == connReady && h.cl != nil && !a.prefs.SidebarHidden && !a.pal.open && !a.picker.open && (a.confirm == nil || !a.confirm.open) && a.wtAsk == nil && a.cmdAsk == nil {
+		if h := a.local(); h.conn == connReady && h.cl != nil && !a.prefs.SidebarHidden && !a.pal.open && !a.picker.open && (a.confirm == nil || !a.confirm.open) && a.wtAsk == nil && a.cmdAsk == nil && a.wsAsk == nil {
 			if files := side.DroppedFiles(); len(files) > 0 {
 				go a.openProjectDirs(h, h.cl, slices.Clone(files), true)
 			}
@@ -184,6 +184,7 @@ func (a *App) view(c *ui.Context) {
 		}
 	}
 	a.paletteView(c, pal)
+	a.workspaceView(c, pal)
 	a.pickerView(c, pal)
 	a.confirmView(c, pal)
 	a.worktreeView(c, pal)
@@ -309,7 +310,7 @@ func (a *App) sidebar(c *ui.Context, pal *palette, bar ui.TitleBar) {
 			ui.Spacer(c)
 		}
 		iconButton(c, "hide-sidebar", sidebarIcon, a.tip(locales.SidebarHide(), "sidebar.toggle"), pal, a.toggleSidebar)
-		iconButton(c, "new-session", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
+		iconButton(c, "new-workspace", plusIcon, a.tip(locales.ActionNewWorkspace(), "project.new"), pal, func() { a.startNewWorkspace(nil) })
 	})
 	// The space between and below the rows moves the window, as the top
 	// bar does, and a double click there starts a session, as ⌘T does.
@@ -1047,7 +1048,7 @@ func (a *App) card(c *ui.Context, pal *palette, bar ui.TitleBar, shown float32) 
 				if shown < 0.5 {
 					ui.Row(c).Absolute().Left(a.chrome.buttonsLeft(bar)).Top(0).Bottom(0).AlignItems(ui.Center).Gap(2).Opacity(1 - 2*shown).Children(func() {
 						iconButton(c, "show-sidebar", sidebarIcon, a.tip(locales.SidebarShow(), "sidebar.toggle"), pal, a.toggleSidebar)
-						iconButton(c, "new-session-2", plusIcon, a.tip(locales.ActionNewSession(), "session.new"), pal, func() { a.newSession("") })
+						iconButton(c, "new-workspace-2", plusIcon, a.tip(locales.ActionNewWorkspace(), "project.new"), pal, func() { a.startNewWorkspace(nil) })
 					})
 				}
 				ui.Text(c, "Kero").FontSize(14).FontWeight(600).TextColor(pal.text)
@@ -1092,7 +1093,11 @@ func (a *App) emptyState(c *ui.Context, pal *palette) {
 		if g, ok := a.selectedGroup(); ok && g.project.ID != "" && len(g.sessions) == 0 {
 			ui.Column(c).Fill().Center().Gap(0).Padding(24).Children(func() {
 				ui.Box(c).Size(52, 52).Radius(14).Center().Background(pal.chip).TextColor(pal.textMuted).Margin(0, 0, 18, 0).Children(func() {
-					ui.Icon(c, folderIcon).Size(26, 26)
+					icon := folderIcon
+					if g.project.Dir == "" {
+						icon = terminalIcon
+					}
+					ui.Icon(c, icon).Size(26, 26)
 				})
 				ui.Text(c, g.project.Name).FontSize(19).FontWeight(650).TextColor(pal.text)
 				ui.Text(c, locales.ProjectNoSessionsDetail(g.project.Name)).
